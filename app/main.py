@@ -1,16 +1,16 @@
 from contextlib import asynccontextmanager
-from datetime import timedelta, datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import jwt
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
-from sqlmodel import select
+from sqlmodel import Session, select
 from starlette import status
 
-from app.database import create_db_and_tables, SessionDep
-from app.models import User, UserCreate, Token
+from app.database import create_db_and_tables, get_session
+from app.models import Token, User, UserCreate
 
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
@@ -25,12 +25,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # define startup behavior (initialize db if does not exists)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # ⏫ Startup
     create_db_and_tables()
     yield
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+type SessionDep = Annotated[Session, Depends(get_session)]
 
 
 def hash_password(password: str) -> str:
@@ -47,14 +49,18 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def authenticate_user(username: str, password: str, session: SessionDep) -> User | bool:
+def authenticate_user(username: str, password: str, session: SessionDep) -> bool | User:
     """
     Authenticate user by verifying password.
     """
     statement = select(User).where(User.username == username)
     results = session.exec(statement)
     user = results.first()
-    if not user and not verify_password(password, user.password_hash):
+
+    if not user: 
+        return False
+
+    if not verify_password(password, user.password_hash):
         return False
 
     return user
@@ -76,7 +82,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
 @app.post("/register", status_code=status.HTTP_201_CREATED)
 def register_user(user_create: UserCreate, session: SessionDep):
-    # Check for duplicate email or username
+    # Check for duplicate email (username)
     username_check = session.exec(select(User).where(User.username == user_create.username)).first()
     if username_check:
         raise HTTPException(

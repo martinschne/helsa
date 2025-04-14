@@ -1,6 +1,7 @@
-from pydantic import EmailStr, BaseModel
-from sqlmodel import SQLModel, Field
 from datetime import datetime, timezone
+
+from pydantic import BaseModel, EmailStr
+from sqlmodel import Field, SQLModel
 
 
 class Token(BaseModel):
@@ -15,12 +16,9 @@ class User(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     is_verified: bool = Field(default=False, nullable=False)
     is_active: bool = Field(default=False, nullable=False)
+    is_admin: bool = Field(default=False, nullable=False)
 
 
 class UserCreate(BaseModel):
     username: EmailStr
     password: str
-
-
-
-
