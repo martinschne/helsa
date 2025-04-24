@@ -168,20 +168,20 @@ def get_diagnose(current_user: Annotated[User, Depends(get_current_user)]):
         This endpoint serves as a contact with GenAI API,
         to obtain a diagnosis based on the description.
     """
-
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
-                    "role": "assistant",
+                    "role": "system",
                     "content": "You are a doctor who acts professionally and deeply care about his patients."
                 },
                 {
                     "role": "user",
-                    "content": "The patients describes following symptoms: I have a headache and feeling thirsty. What would be the possible diagnosis and what are the recommended steps for the patient to do."
+                    "content": "The patients describes following symptoms: I have a headache and feeling thirsty. What would be the possible diagnosis and what are the recommended steps for the patient to do. Answer shortly, use maximum 200 words. Your answer should be using plain casual english as if you were speaking to a avaregaly intelligent patient. Adress the person directly using 'you' in the answer."
                 }
             ],
+            temperature=0.1,
             max_tokens=200
         )
 
