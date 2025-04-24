@@ -1,18 +1,25 @@
+import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import jwt
+from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from jwt import InvalidTokenError
+from openai import OpenAI
 from passlib.context import CryptContext
 from sqlmodel import Session, select
 from starlette import status
 
 from app.database import create_db_and_tables, get_session
-from app.models import Token, User, UserCreate
+from app.models import Token, User, UserCreate, TokenData
 
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+load_dotenv()
+
+SECRET_KEY = os.getenv("SECRET_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -21,6 +28,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+# Initialize the OpenAI client
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 # define startup behavior (initialize db if does not exists)
 @asynccontextmanager
@@ -31,8 +40,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-
-type SessionDep = Annotated[Session, Depends(get_session)]
+SessionDep = Annotated[Session, Depends(get_session)]
 
 
 def hash_password(password: str) -> str:
@@ -132,3 +140,54 @@ async def login_for_access_token(
     )
 
     return Token(access_token=access_token, token_type="bearer")
+
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], session: SessionDep):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+        token_data = TokenData(username=username)
+    except InvalidTokenError:
+        raise credentials_exception
+    user = session.exec(select(User).where(User.username == token_data.username)).first()
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+@app.post("/get-diagnose")
+def get_diagnose(current_user: Annotated[User, Depends(get_current_user)]):
+    """
+        This endpoint serves as a contact with GenAI API,
+        to obtain a diagnosis based on the description.
+    """
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {
+                    "role": "assistant",
+                    "content": "You are a doctor who acts professionally and deeply care about his patients."
+                },
+                {
+                    "role": "user",
+                    "content": "The patients describes following symptoms: I have a headache and feeling thirsty. What would be the possible diagnosis and what are the recommended steps for the patient to do."
+                }
+            ],
+            max_tokens=200
+        )
+
+        processed_answer = response.choices[0].message.content
+        return {"username": current_user.username, "diagnosis": processed_answer}
+    except Exception as e:
+        print(e)
+        return None
+
