@@ -12,9 +12,11 @@ from openai import OpenAI
 from passlib.context import CryptContext
 from sqlmodel import Session, select
 from starlette import status
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from app.database import create_db_and_tables, get_session
-from app.models import Token, User, UserCreate, TokenData
+from app.models import Token, User, UserCreate, TokenData, Prompt, SymptomReport
 
 load_dotenv()
 
@@ -162,27 +164,46 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], sessio
     return user
 
 
+def build_diagnose_prompt(symptom_report: SymptomReport) -> Prompt:
+    system_instruction = "You are a doctor who acts professionally and deeply care about his patients."
+    prompt = f"""
+    The patient describes following symptoms: '{symptom_report.symptoms}'
+    The patient says about the duration of the symptoms: '{symptom_report.duration if symptom_report.duration else "N/A"}'
+    Answer shortly, and use {symptom_report.tone} tone.
+    Address the person directly using 'you' in the answer.
+    Use {symptom_report.style} language in the answer, as if you were speaking to an average person aged: 
+    {symptom_report.age_years if symptom_report.age_years else "N/A"}.
+    What would be the possible diagnosis and what are the recommended steps for the patient to do?
+    """
+    try:
+        prompt = Prompt(system_instruction=system_instruction, query=prompt, temperature=0.1)
+        return prompt
+    except ValidationE as e:
+        raise HTTPException(500)
+
+
 @app.post("/get-diagnose")
-def get_diagnose(current_user: Annotated[User, Depends(get_current_user)]):
+def get_diagnose(symptom_report: SymptomReport, current_user: Annotated[User, Depends(get_current_user)]):
     """
         This endpoint serves as a contact with GenAI API,
         to obtain a diagnosis based on the description.
     """
     try:
+        prompt = build_diagnose_prompt(symptom_report)
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a doctor who acts professionally and deeply care about his patients."
+                    "content": prompt.system_instruction
                 },
                 {
                     "role": "user",
-                    "content": "The patients describes following symptoms: I have a headache and feeling thirsty. What would be the possible diagnosis and what are the recommended steps for the patient to do. Answer shortly, use maximum 200 words. Your answer should be using plain casual english as if you were speaking to a avaregaly intelligent patient. Adress the person directly using 'you' in the answer."
+                    "content": prompt.query
                 }
             ],
-            temperature=0.1,
-            max_tokens=200
+            temperature=prompt.temperature,
+            max_tokens=prompt.max_tokens
         )
 
         processed_answer = response.choices[0].message.content
@@ -191,3 +212,10 @@ def get_diagnose(current_user: Annotated[User, Depends(get_current_user)]):
         print(e)
         return None
 
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An unexpected error occurred."},
+    )
