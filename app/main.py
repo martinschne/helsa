@@ -7,6 +7,7 @@ from typing import Annotated
 import jwt
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -17,7 +18,7 @@ from pydantic import ValidationError
 from sqlmodel import Session, select
 
 from app.database import create_db_and_tables, get_session
-from app.models import Token, User, UserCreate, TokenData, Prompt, SymptomReport, DoctorsResponse
+from app.models import Token, User, UserCreate, TokenData, Prompt, PatientReport, DoctorsResponse, ResponseTone
 
 load_dotenv()
 
@@ -169,24 +170,36 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], sessio
     return user
 
 
-def build_diagnose_prompt(symptom_report: SymptomReport) -> Prompt:
+def get_configured_temperature(tone: ResponseTone) -> float:
+    if tone == ResponseTone.FUNNY or tone == ResponseTone.FRIENDLY:
+        return 0.3
+
+    return 0.1
+
+
+def build_diagnose_prompt(patient_report: PatientReport) -> Prompt:
     """
     May raise validation error.
-    :param symptom_report:
+    :param patient_report:
     :return:
     """
-    system_instruction = "You are a doctor who acts professionally and deeply care about his patients."
+    system_instruction = f"You are a {patient_report.tone} doctor."
     prompt = f"""
-    The patient describes following symptoms: '{symptom_report.symptoms}'
-    The patient says about the duration of the symptoms: '{symptom_report.duration if symptom_report.duration else "N/A"}'
-    Answer shortly, and use {symptom_report.tone} tone.
+    The patient describes following symptoms: '{patient_report.symptoms}'
+    The patient says about the duration of the symptoms: '{patient_report.duration if patient_report.duration else "N/A"}'
+    Answer shortly, and use {patient_report.tone} tone.
     Address the person directly using 'you' in the answer.
-    Use {symptom_report.style} language in the answer, as if you were speaking to an average person aged: 
-    {symptom_report.age_years if symptom_report.age_years else "N/A"}.
+    Use {patient_report.style} language in the answer, as if you were speaking to an average person aged: 
+    {patient_report.age_years if patient_report.age_years else "N/A"}.
     What would be the possible diagnosis and what are the recommended steps for the patient to do?
     """
 
-    prompt = Prompt(system_instruction=system_instruction, query=prompt, temperature=0.1)
+    prompt = Prompt(
+        system_instruction=system_instruction,
+        query=prompt,
+        temperature=get_configured_temperature(patient_report.tone)
+    )
+
     return prompt
 
 
@@ -196,46 +209,37 @@ def error_response(message: str = "Internal server error", status_code: int = 50
 
 
 @app.post("/get-diagnose")
-def get_diagnose(symptom_report: SymptomReport, current_user: Annotated[User, Depends(get_current_user)]):
+def get_diagnose(patient_report: PatientReport, current_user: Annotated[User, Depends(get_current_user)]):
     """
         This endpoint serves as a contact with GenAI API,
         to obtain a diagnosis based on the description.
     """
+    request_failed_msg = "Requesting diagnose failed, please try again later."
     try:
-        prompt = build_diagnose_prompt(symptom_report)
-        # response = client.chat.completions.create(
-        #     model="gpt-4o-mini",
-        #     messages=[
-        #         {
-        #             "role": "system",
-        #             "content": prompt.system_instruction
-        #         },
-        #         {
-        #             "role": "user",
-        #             "content": prompt.query
-        #         }
-        #     ],
-        #     temperature=prompt.temperature,
-        #     max_tokens=prompt.max_tokens
-        # )
-
-        # processed_answer = response.choices[0].message.content
-
+        prompt = build_diagnose_prompt(patient_report)
         response = client.responses.parse(
             model="gpt-4o",
             input=[
                 {"role": "system", "content": prompt.system_instruction},
                 {"role": "user", "content": prompt.query}
             ],
-            text_format=DoctorsResponse
+            temperature=prompt.temperature,
+            text_format=DoctorsResponse,
+            user=str(current_user.id)
         )
 
-        parsed_response = response.output[0].content[0].parsed
-        json_answer = parsed_response.dict()
-        return JSONResponse(status_code=status.HTTP_200_OK, content=json_answer)
+        response_content = response.output[0].content[0]
+
+        if not response_content.parsed:
+            logger.error("OpenAI API did not parse the response properly.")
+            return error_response(message=request_failed_msg)
+
+        parsed_response = response_content.parsed
+        jsonable_answer = jsonable_encoder(parsed_response)
+        return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_answer)
     except ValidationError as e:
         logger.error(f"Prompt creation failed: {e}")
-        return error_response()
+        return error_response(message=request_failed_msg)
 
 
 @app.exception_handler(Exception)

@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Annotated, List
@@ -16,7 +17,7 @@ class TokenData(BaseModel):
 
 
 class User(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
+    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     username: EmailStr = Field(index=True, nullable=False, unique=True)
     password_hash: str = Field(nullable=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -38,9 +39,8 @@ class Prompt(BaseModel):
 
 
 class ResponseTone(str, Enum):
-    FORMAL = "formal"
+    PROFESSIONAL = "professional"
     FRIENDLY = "friendly"
-    DIRECT = "direct"
     FUNNY = "funny"
 
 
@@ -49,12 +49,12 @@ class LanguageStyle(str, Enum):
     SIMPLE = "simple"
 
 
-class SymptomReport(BaseModel):
-    tone: ResponseTone = ResponseTone.FORMAL
+class PatientReport(BaseModel):
+    tone: ResponseTone = ResponseTone.PROFESSIONAL
     style: LanguageStyle = LanguageStyle.SIMPLE
-    symptoms: str = Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=500)]
-    duration: str = Annotated[str | None, StringConstraints(strip_whitespace=True, min_length=10, max_length=250)]
-    age_years: int = Field(ge=0, description="Age of the patient in years, rounded up to next whole integer.")
+    symptoms: Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=500)]
+    duration: Annotated[str | None, StringConstraints(strip_whitespace=True, min_length=5, max_length=250)]
+    age_years: Annotated[int, Field(ge=0, description="Age of the patient in years, rounded up to next whole integer.")]
 
 
 # structured output for responses
