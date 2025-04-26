@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Annotated
+from typing import Annotated, List
 
 from pydantic import BaseModel, EmailStr, StringConstraints
 from sqlmodel import Field, SQLModel
@@ -55,3 +55,14 @@ class SymptomReport(BaseModel):
     symptoms: str = Annotated[str, StringConstraints(strip_whitespace=True, min_length=10, max_length=500)]
     duration: str = Annotated[str | None, StringConstraints(strip_whitespace=True, min_length=10, max_length=250)]
     age_years: int = Field(ge=0, description="Age of the patient in years, rounded up to next whole integer.")
+
+
+# structured output for responses
+class Diagnose(BaseModel):
+    name: str
+    description: str
+    recommended_action: str
+
+
+class DoctorsResponse(BaseModel):
+    diagnoses: List[Diagnose]

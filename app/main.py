@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
@@ -5,25 +6,29 @@ from typing import Annotated
 
 import jwt
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.requests import Request
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jwt import InvalidTokenError
 from openai import OpenAI
 from passlib.context import CryptContext
+from pydantic import ValidationError
 from sqlmodel import Session, select
-from starlette import status
-from starlette.requests import Request
-from starlette.responses import JSONResponse
 
 from app.database import create_db_and_tables, get_session
-from app.models import Token, User, UserCreate, TokenData, Prompt, SymptomReport
+from app.models import Token, User, UserCreate, TokenData, Prompt, SymptomReport, DoctorsResponse
 
 load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 120
+
+# setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # security setup
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -165,6 +170,11 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], sessio
 
 
 def build_diagnose_prompt(symptom_report: SymptomReport) -> Prompt:
+    """
+    May raise validation error.
+    :param symptom_report:
+    :return:
+    """
     system_instruction = "You are a doctor who acts professionally and deeply care about his patients."
     prompt = f"""
     The patient describes following symptoms: '{symptom_report.symptoms}'
@@ -175,11 +185,14 @@ def build_diagnose_prompt(symptom_report: SymptomReport) -> Prompt:
     {symptom_report.age_years if symptom_report.age_years else "N/A"}.
     What would be the possible diagnosis and what are the recommended steps for the patient to do?
     """
-    try:
-        prompt = Prompt(system_instruction=system_instruction, query=prompt, temperature=0.1)
-        return prompt
-    except ValidationE as e:
-        raise HTTPException(500)
+
+    prompt = Prompt(system_instruction=system_instruction, query=prompt, temperature=0.1)
+    return prompt
+
+
+def error_response(message: str = "Internal server error", status_code: int = 500):
+    """Factory method for error responses."""
+    return JSONResponse(status_code=status_code, content={"detail": message})
 
 
 @app.post("/get-diagnose")
@@ -190,32 +203,51 @@ def get_diagnose(symptom_report: SymptomReport, current_user: Annotated[User, De
     """
     try:
         prompt = build_diagnose_prompt(symptom_report)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "system",
-                    "content": prompt.system_instruction
-                },
-                {
-                    "role": "user",
-                    "content": prompt.query
-                }
+        # response = client.chat.completions.create(
+        #     model="gpt-4o-mini",
+        #     messages=[
+        #         {
+        #             "role": "system",
+        #             "content": prompt.system_instruction
+        #         },
+        #         {
+        #             "role": "user",
+        #             "content": prompt.query
+        #         }
+        #     ],
+        #     temperature=prompt.temperature,
+        #     max_tokens=prompt.max_tokens
+        # )
+
+        # processed_answer = response.choices[0].message.content
+
+        response = client.responses.parse(
+            model="gpt-4o",
+            input=[
+                {"role": "system", "content": prompt.system_instruction},
+                {"role": "user", "content": prompt.query}
             ],
-            temperature=prompt.temperature,
-            max_tokens=prompt.max_tokens
+            text_format=DoctorsResponse
         )
 
-        processed_answer = response.choices[0].message.content
-        return {"username": current_user.username, "diagnosis": processed_answer}
-    except Exception as e:
-        print(e)
-        return None
+        parsed_response = response.output[0].content[0].parsed
+        json_answer = parsed_response.dict()
+        return JSONResponse(status_code=status.HTTP_200_OK, content=json_answer)
+    except ValidationError as e:
+        logger.error(f"Prompt creation failed: {e}")
+        return error_response()
 
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
+    """
+    Designed for handling unexpected crashes.
+    :param request:
+    :param exc:
+    :return:
+    """
+    logger.error(f"Unexpected error: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": "An unexpected error occurred."},
+        content={"detail": "Internal server error. Please try again later."},
     )
