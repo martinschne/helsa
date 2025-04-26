@@ -18,7 +18,9 @@ from pydantic import ValidationError
 from sqlmodel import Session, select
 
 from app.database import create_db_and_tables, get_session
-from app.models import Token, User, UserCreate, TokenData, Prompt, PatientReport, DoctorsResponse, ResponseTone
+from app.models.consultation import ResponseTone, PatientReport, Prompt, DoctorsResponse
+from app.models.security import Token, TokenData
+from app.models.user import User, UserCreate
 
 load_dotenv()
 

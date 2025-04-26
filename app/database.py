@@ -1,6 +1,6 @@
 from sqlmodel import Session, SQLModel, create_engine
 
-from app.models import User
+from app.models.user import User
 
 DATABASE_URL = "sqlite:///./helsa.db"
 engine = create_engine(DATABASE_URL, echo=True)

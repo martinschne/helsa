@@ -1,34 +1,7 @@
-import uuid
-from datetime import datetime, timezone
 from enum import Enum
 from typing import Annotated, List
 
-from pydantic import BaseModel, EmailStr, StringConstraints
-from sqlmodel import Field, SQLModel
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class TokenData(BaseModel):
-    username: str | None = None
-
-
-class User(SQLModel, table=True):
-    id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    username: EmailStr = Field(index=True, nullable=False, unique=True)
-    password_hash: str = Field(nullable=False)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    is_verified: bool = Field(default=False, nullable=False)
-    is_active: bool = Field(default=False, nullable=False)
-    is_admin: bool = Field(default=False, nullable=False)
-
-
-class UserCreate(BaseModel):
-    username: EmailStr
-    password: str
+from pydantic import BaseModel, StringConstraints, Field
 
 
 class Prompt(BaseModel):
@@ -57,7 +30,6 @@ class PatientReport(BaseModel):
     age_years: Annotated[int, Field(ge=0, description="Age of the patient in years, rounded up to next whole integer.")]
 
 
-# structured output for responses
 class Diagnose(BaseModel):
     name: str
     description: str
