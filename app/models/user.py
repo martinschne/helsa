@@ -2,7 +2,9 @@ import uuid
 from datetime import datetime, timezone
 
 from pydantic import EmailStr, BaseModel
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
+
+from app.models.search import Search
 
 
 class User(SQLModel, table=True):
@@ -13,7 +15,8 @@ class User(SQLModel, table=True):
     is_verified: bool = Field(default=False, nullable=False)
     is_active: bool = Field(default=False, nullable=False)
     is_admin: bool = Field(default=False, nullable=False)
-    premium: bool = Field(default=False, nullable=False)
+    has_premium_tier: bool = Field(default=False, nullable=False)
+    searches: list[Search] | None = Relationship(back_populates="user", cascade_delete=True)
 
 
 class UserCreate(BaseModel):

@@ -2,11 +2,11 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from typing import Annotated, List
 
 import jwt
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, status, Form, UploadFile, File
+from fastapi import Depends, FastAPI, HTTPException, status, Form, File, UploadFile
 from fastapi.encoders import jsonable_encoder
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
@@ -20,6 +20,7 @@ from sqlmodel import Session, select
 from app.database import create_db_and_tables, get_session
 from app.models.auth import Token, TokenData
 from app.models.consultation import ResponseTone, PatientReport, Prompt, DoctorsResponse
+from app.models.search import Search, SearchDiagnose, SearchImage
 from app.models.user import User, UserCreate
 
 load_dotenv()
@@ -46,6 +47,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 # Initialize the OpenAI client
 client = OpenAI(api_key=OPENAI_API_KEY)
+
 
 # define startup behavior (initialize db if does not exists)
 @asynccontextmanager
@@ -86,7 +88,7 @@ def authenticate_user(username: str, password: str, session: Session) -> bool | 
     Authenticate user by verifying password.
     """
     user = get_user(username, session)
-    if not user: 
+    if not user:
         return False
 
     if not verify_password(password, user.password_hash):
@@ -130,26 +132,6 @@ def register_user(user_create: UserCreate, session: SessionDep):
     session.refresh(user)
 
     return {"message": f"User: {user.username} created successfully"}
-
-
-# @app.post("/user/set_premium")
-# def set_premium(username: str, premium: bool):
-#     pass
-#
-#
-# @app.post("/user/set_admin")
-# def set_admin(current_admin_username: str, admin_password: str, new_admin_username: str):
-#     pass
-#
-#
-# @app.post("/user/toggle_active_state")
-# def toggle_active_state(username: str, active: bool):
-#     pass
-
-
-# @app.post("/user/get_user")
-# def get_user(username: str, session: SessionDep) -> User | None:
-#     return get_user(username, session)
 
 
 @app.post("/token")
@@ -205,6 +187,24 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], sessio
     return user
 
 
+def save_search(report: PatientReport, current_user: User, images: list[SearchImage], diagnoses: list[SearchDiagnose],
+                session: Session):
+    search = Search(
+        symptoms=report.symptoms,
+        diagnoses=diagnoses,
+        patient_age_years=report.age_years,
+        response_tone=report.response_tone,
+        language_style=report.language_style,
+        user_id=current_user.id,
+        user=current_user,
+        images=images
+    )
+
+    session.add(search)
+    session.commit()
+    session.refresh(search)
+
+
 def get_configured_temperature(tone: ResponseTone) -> float:
     if tone == ResponseTone.FUNNY or tone == ResponseTone.FRIENDLY:
         return 0.3
@@ -222,6 +222,10 @@ def build_diagnose_prompt(patient_report: PatientReport) -> Prompt:
     prompt = f"""
     The patient describes following symptoms: '{patient_report.symptoms}'
     The patient says about the duration of the symptoms: '{patient_report.duration if patient_report.duration else "N/A"}'
+    If patient provided images, please take them in the account when finding appropriate diagnoses.
+    Briefly describe what you see on the images and how it supports/disapproves the diagnoses of your choice.
+    If patient provided images that do not display symptoms of a medical condition or unrelated images, e.g. images
+    of objects instead of body parts, do NOT take them into account and inform the patient about it.
     Answer shortly, and use {patient_report.tone} tone.
     Address the person directly using 'you' in the answer.
     Use {patient_report.style} language in the answer, as if you were speaking to an average person aged: 
@@ -243,30 +247,53 @@ def error_response(message: str = "Internal server error", status_code: int = 50
     return JSONResponse(status_code=status_code, content={"detail": message})
 
 
+def upload_images(current_user: User, symptom_images: list[UploadFile]):
+    if symptom_images is not None and not current_user.has_premium_tier:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="For uploading images you need to have a paid premium tier."
+        )
+
+    if symptom_images is not None and len(symptom_images) > 3:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="It is only possible to upload a maximum of 3 images.")
+
+    saved_images = []
+    allowed_mime_types = {"image/jpeg", "image/png", "image/webp"}
+    for image in symptom_images:
+        if image.content_type not in allowed_mime_types:
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail="Unsupported media type: only image files in jpeg, png or webp format are allowed."
+            )
+    # TODO: finish the implementation: saving images to 'app/static/uploads' folder and returning 'saved_images' with paths
+
+
 # TODO: implement rate limits for this endpoint
 @app.post("/get-diagnose")
 def get_diagnose(
         patient_report: Annotated[PatientReport, Form()],
-        symptoms_image: Annotated[UploadFile, File(description="An image file displaying visible symptoms.")],
+        symptom_images: Annotated[List[UploadFile] | None, File()],
         current_user: Annotated[User, Depends(get_current_user)]):
     """
         This endpoint serves as a contact with GenAI API,
         to obtain a diagnosis based on the description.
     """
+    upload_images(current_user, symptom_images)
+
     request_failed_msg = "Requesting diagnose failed, please try again later."
     try:
         prompt = build_diagnose_prompt(patient_report)
         response = client.responses.parse(
             model="gpt-4o",
-            input=[  # TODO: enable adding pictures and enforce size limits (costs)
+            input=[  # enable adding pictures and enforce size limits (costs)
                 {"role": "system", "content": prompt.system_instruction},
                 {"role": "user", "content": prompt.query}
             ],
             temperature=prompt.temperature,
             text_format=DoctorsResponse,
             user=str(current_user.id)
-            # TODO: add timeout (set up default value for 1 min)
-        )
+        )  # TODO: add timeout (set up default value for 1 min)
         # TODO: refactor checking response correctness into function
         response_content = response.output[0].content[0]
 
@@ -276,6 +303,10 @@ def get_diagnose(
 
         parsed_response = response_content.parsed
         jsonable_answer = jsonable_encoder(parsed_response)
+
+        # TODO: implement saving the search (with optionally added images and received diagnoses)
+        # save_search(report=patient_report, current_user=current_user, images=)
+
         return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_answer)
     # TODO: catch more exceptions - read open API docs to fig. out which can be raised by parse()
     except ValidationError as e:

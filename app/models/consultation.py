@@ -23,8 +23,8 @@ class LanguageStyle(str, Enum):
 
 
 class PatientReport(BaseModel):
-    tone: ResponseTone = ResponseTone.PROFESSIONAL
-    style: LanguageStyle = LanguageStyle.SIMPLE
+    response_tone: ResponseTone = ResponseTone.PROFESSIONAL
+    language_style: LanguageStyle = LanguageStyle.SIMPLE
     symptoms: Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=500)]
     duration: Annotated[str | None, StringConstraints(strip_whitespace=True, min_length=5, max_length=250)]
     age_years: Annotated[int, Field(ge=0, description="Age of the patient in years, rounded up to next whole integer.")]
@@ -37,4 +37,4 @@ class Diagnose(BaseModel):
 
 
 class DoctorsResponse(BaseModel):
-    diagnoses: List["Diagnose"]
+    diagnoses: List[Diagnose]
