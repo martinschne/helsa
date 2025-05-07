@@ -6,7 +6,7 @@ from typing import Annotated
 
 import jwt
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, Form, UploadFile, File
 from fastapi.encoders import jsonable_encoder
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse
@@ -18,8 +18,8 @@ from pydantic import ValidationError
 from sqlmodel import Session, select
 
 from app.database import create_db_and_tables, get_session
+from app.models.auth import Token, TokenData
 from app.models.consultation import ResponseTone, PatientReport, Prompt, DoctorsResponse
-from app.models.security import Token, TokenData
 from app.models.user import User, UserCreate
 
 load_dotenv()
@@ -210,8 +210,12 @@ def error_response(message: str = "Internal server error", status_code: int = 50
     return JSONResponse(status_code=status_code, content={"detail": message})
 
 
+# TODO: implement rate limits for this endpoint
 @app.post("/get-diagnose")
-def get_diagnose(patient_report: PatientReport, current_user: Annotated[User, Depends(get_current_user)]):
+def get_diagnose(
+        patient_report: Annotated[PatientReport, Form()],
+        symptoms_image: Annotated[UploadFile, File(description="An image file displaying visible symptoms.")],
+        current_user: Annotated[User, Depends(get_current_user)]):
     """
         This endpoint serves as a contact with GenAI API,
         to obtain a diagnosis based on the description.
@@ -221,15 +225,16 @@ def get_diagnose(patient_report: PatientReport, current_user: Annotated[User, De
         prompt = build_diagnose_prompt(patient_report)
         response = client.responses.parse(
             model="gpt-4o",
-            input=[
+            input=[  # TODO: enable adding pictures and enforce size limits (costs)
                 {"role": "system", "content": prompt.system_instruction},
                 {"role": "user", "content": prompt.query}
             ],
             temperature=prompt.temperature,
             text_format=DoctorsResponse,
             user=str(current_user.id)
+            # TODO: aad timeout (set up default value for 1 min)
         )
-
+        # TODO: refactor checking response correctness into function
         response_content = response.output[0].content[0]
 
         if not response_content.parsed:
@@ -239,6 +244,7 @@ def get_diagnose(patient_report: PatientReport, current_user: Annotated[User, De
         parsed_response = response_content.parsed
         jsonable_answer = jsonable_encoder(parsed_response)
         return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_answer)
+    # TODO: catch more exceptions - read open API docs to fig. out which can be raised by parse()
     except ValidationError as e:
         logger.error(f"Prompt creation failed: {e}")
         return error_response(message=request_failed_msg)
