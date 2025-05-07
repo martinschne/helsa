@@ -13,6 +13,7 @@ class User(SQLModel, table=True):
     is_verified: bool = Field(default=False, nullable=False)
     is_active: bool = Field(default=False, nullable=False)
     is_admin: bool = Field(default=False, nullable=False)
+    premium: bool = Field(default=False, nullable=False)
 
 
 class UserCreate(BaseModel):

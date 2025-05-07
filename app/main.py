@@ -26,8 +26,14 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+UPLOADS_DIRECTORY = os.getenv("UPLOADS_DIRECTORY")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120
+
+# create uploads dir if it does not exists
+if not os.path.exists(UPLOADS_DIRECTORY):
+    os.makedirs(UPLOADS_DIRECTORY)
 
 # setup logging
 logging.basicConfig(level=logging.INFO)
@@ -67,14 +73,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-def authenticate_user(username: str, password: str, session: SessionDep) -> bool | User:
+def get_user(username: str, session: Session) -> User:
+    user = session.exec(
+        select(User).where(User.username == username)
+    ).first()
+
+    return user
+
+
+def authenticate_user(username: str, password: str, session: Session) -> bool | User:
     """
     Authenticate user by verifying password.
     """
-    statement = select(User).where(User.username == username)
-    results = session.exec(statement)
-    user = results.first()
-
+    user = get_user(username, session)
     if not user: 
         return False
 
@@ -101,7 +112,9 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 @app.post("/register", status_code=status.HTTP_201_CREATED)
 def register_user(user_create: UserCreate, session: SessionDep):
     # Check for duplicate email (username)
-    username_check = session.exec(select(User).where(User.username == user_create.username)).first()
+    username_check = session.exec(
+        select(User).where(User.username == user_create.username)
+    ).first()
     if username_check:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -117,6 +130,26 @@ def register_user(user_create: UserCreate, session: SessionDep):
     session.refresh(user)
 
     return {"message": f"User: {user.username} created successfully"}
+
+
+# @app.post("/user/set_premium")
+# def set_premium(username: str, premium: bool):
+#     pass
+#
+#
+# @app.post("/user/set_admin")
+# def set_admin(current_admin_username: str, admin_password: str, new_admin_username: str):
+#     pass
+#
+#
+# @app.post("/user/toggle_active_state")
+# def toggle_active_state(username: str, active: bool):
+#     pass
+
+
+# @app.post("/user/get_user")
+# def get_user(username: str, session: SessionDep) -> User | None:
+#     return get_user(username, session)
 
 
 @app.post("/token")
@@ -232,7 +265,7 @@ def get_diagnose(
             temperature=prompt.temperature,
             text_format=DoctorsResponse,
             user=str(current_user.id)
-            # TODO: aad timeout (set up default value for 1 min)
+            # TODO: add timeout (set up default value for 1 min)
         )
         # TODO: refactor checking response correctness into function
         response_content = response.output[0].content[0]

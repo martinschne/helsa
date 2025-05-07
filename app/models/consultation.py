@@ -37,4 +37,4 @@ class Diagnose(BaseModel):
 
 
 class DoctorsResponse(BaseModel):
-    diagnoses: List[Diagnose]
+    diagnoses: List["Diagnose"]
