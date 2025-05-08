@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, List
@@ -32,9 +33,8 @@ UPLOADS_DIRECTORY = os.getenv("UPLOADS_DIRECTORY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
-# create uploads dir if it does not exists
-if not os.path.exists(UPLOADS_DIRECTORY):
-    os.makedirs(UPLOADS_DIRECTORY)
+# create uploads dir if it does not exist
+os.makedirs(UPLOADS_DIRECTORY, exist_ok=True)
 
 # setup logging
 logging.basicConfig(level=logging.INFO)
@@ -247,7 +247,7 @@ def error_response(message: str = "Internal server error", status_code: int = 50
     return JSONResponse(status_code=status_code, content={"detail": message})
 
 
-def upload_images(current_user: User, symptom_images: list[UploadFile]):
+async def upload_images(current_user: User, symptom_images: list[UploadFile]):
     if symptom_images is not None and not current_user.has_premium_tier:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -266,7 +266,12 @@ def upload_images(current_user: User, symptom_images: list[UploadFile]):
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                 detail="Unsupported media type: only image files in jpeg, png or webp format are allowed."
             )
-    # TODO: finish the implementation: saving images to 'app/static/uploads' folder and returning 'saved_images' with paths
+
+        # image_data = await image.read()
+        # image = Image.open(io.BytesIO(image_data))
+        destination = f"{UPLOADS_DIRECTORY}{image.filename}"
+        with open(destination, "wb") as fileBuffer:
+            shutil.copyfileobj(image.file, fileBuffer)
 
 
 # TODO: implement rate limits for this endpoint
