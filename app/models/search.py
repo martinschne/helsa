@@ -15,7 +15,7 @@ class Search(SQLModel, table=True):
     response_tone: ResponseTone = Field(nullable=False)
     language_style: LanguageStyle = Field(nullable=False)
     user_id: uuid.UUID = Field(foreign_key="user.id")
-    user: "User" = Relationship(back_populates="search")
+    user: "User" = Relationship(back_populates="searches")
     images: List["SearchImage"] | None = Relationship(back_populates="search", cascade_delete=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

@@ -1,9 +1,8 @@
 from sqlmodel import Session, SQLModel, create_engine
 
-from app.models.user import User
+from app.core.config import settings
 
-DATABASE_URL = "sqlite:///./helsa.db"
-engine = create_engine(DATABASE_URL, echo=True)
+engine = create_engine(settings.DATABASE_URL, echo=True)
 
 
 def create_db_and_tables():
