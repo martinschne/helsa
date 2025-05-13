@@ -1,15 +1,8 @@
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from app.core.security import verify_password
 from app.models.user import User
-
-
-def get_user(username: str, session: Session) -> User:
-    user = session.exec(
-        select(User).where(User.username == username)
-    ).first()
-
-    return user
+from app.repositories.user_repository import get_user
 
 
 def authenticate_user(username: str, password: str, session: Session) -> bool | User:

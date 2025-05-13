@@ -23,3 +23,16 @@ class User(SQLModel, table=True):
 class UserCreate(BaseModel):
     username: EmailStr
     password: str
+
+
+class UserFlags(BaseModel):
+    is_verified: bool | None = None
+    is_active: bool | None = None
+    is_admin: bool | None = None
+    has_premium_tier: bool | None = None
+    model_config = {"extra": "forbid"}
+
+
+class UserFlagsRequest(BaseModel):
+    username: EmailStr
+    user_flags: UserFlags

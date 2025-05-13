@@ -8,13 +8,13 @@ from sqlmodel import select
 from app.core.config import settings
 from app.core.security import create_access_token, hash_password
 from app.core.types import DBSessionDependency
-from app.models.auth import Token
+from app.models.security import Token
 from app.models.user import UserCreate, User
 from app.services.auth_service import authenticate_user
 
 router = APIRouter(
-    prefix="/auth",
-    tags=["auth"]
+    prefix="/access",
+    tags=["access"]
 )
 
 

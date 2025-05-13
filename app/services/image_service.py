@@ -8,7 +8,7 @@ from app.core.exceptions import error_response
 from app.models.user import User
 
 
-def upload_images(current_user: User, symptom_images: List[UploadFile]):
+def check_upload_criteria(current_user: User, symptom_images: List[UploadFile]):
     if symptom_images is not None and not current_user.has_premium_tier:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -18,6 +18,10 @@ def upload_images(current_user: User, symptom_images: List[UploadFile]):
     if symptom_images is not None and len(symptom_images) > 3:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="It is only possible to upload a maximum of 3 images.")
+
+
+def upload_images(current_user: User, symptom_images: List[UploadFile]):
+    check_upload_criteria(current_user, symptom_images)
 
     saved_images = []
     allowed_mime_types = {"image/jpeg", "image/png", "image/webp"}

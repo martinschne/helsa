@@ -35,6 +35,7 @@ def get_diagnose(
         This endpoint serves as a contact with GenAI API,
         to obtain a diagnosis based on the description.
     """
+    logger.debug(f"Symptom images: {symptom_images}")
     upload_images(current_user, symptom_images)
     request_failed_msg = "Requesting diagnose failed, please try again later."
     try:

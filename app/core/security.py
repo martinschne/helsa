@@ -10,7 +10,7 @@ from sqlmodel import select
 
 from app.core.config import settings
 from app.core.types import DBSessionDependency
-from app.models.auth import TokenData
+from app.models.security import TokenData
 from app.models.user import User
 
 # security setup
