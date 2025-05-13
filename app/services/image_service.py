@@ -1,4 +1,6 @@
+import os
 import shutil
+import uuid
 from typing import List
 
 from fastapi import HTTPException, status, UploadFile
@@ -8,22 +10,28 @@ from app.core.exceptions import error_response
 from app.models.user import User
 
 
+def adjust_image_resolution():
+    pass
+
+
 def check_upload_criteria(current_user: User, symptom_images: List[UploadFile]):
+    max_images_count = 3
     if symptom_images is not None and not current_user.has_premium_tier:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
             detail="For uploading images you need to have a paid premium tier."
         )
 
-    if symptom_images is not None and len(symptom_images) > 3:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="It is only possible to upload a maximum of 3 images.")
-
+    if symptom_images is not None and len(symptom_images) > max_images_count:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Too many images. Maximum allowed count is {max_images_count}."
+        )
 
 def upload_images(current_user: User, symptom_images: List[UploadFile]):
     check_upload_criteria(current_user, symptom_images)
 
-    saved_images = []
+    saved_img_paths = []
     allowed_mime_types = {"image/jpeg", "image/png", "image/webp"}
     for image in symptom_images:
         if image.content_type not in allowed_mime_types:
@@ -34,9 +42,10 @@ def upload_images(current_user: User, symptom_images: List[UploadFile]):
 
         # image_data = await image.read()
         # image = Image.open(io.BytesIO(image_data))
-        destination = f"{settings.UPLOADS_DIRECTORY}/{image.filename}"
+        uploaded_filename = f"{uuid.uuid4()}{os.path.splitext(image.filename)[1]}"
+        upload_destination = os.path.join(settings.UPLOADS_DIRECTORY, uploaded_filename)
         try:
-            with open(destination, "wb") as file_buffer:
+            with open(upload_destination, "wb") as file_buffer:
                 shutil.copyfileobj(image.file, file_buffer)
         except IOError:
             return error_response(
@@ -44,6 +53,6 @@ def upload_images(current_user: User, symptom_images: List[UploadFile]):
                 message="Error occurred when saving images. Please try again later."
             )
 
-        saved_images.append(destination)
+        saved_img_paths.append(upload_destination)
 
-    return saved_images
+    return saved_img_paths

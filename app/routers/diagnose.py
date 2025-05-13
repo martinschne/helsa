@@ -1,9 +1,9 @@
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
 from fastapi import Depends, File, Form, status, UploadFile, APIRouter
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from openai import OpenAI
+from openai import OpenAI, APIError, RateLimitError, BadRequestError, AuthenticationError
 from pydantic import ValidationError
 
 from app.core.config import settings
@@ -27,7 +27,7 @@ def get_diagnose(
         symptoms: Annotated[str, Form()],
         duration: Annotated[str | None, Form()] = None,
         age_years: Annotated[int | None, Form()] = None,
-        symptom_images: Annotated[List[UploadFile] | None, File()] = None,
+        symptom_images: Annotated[Optional[List[UploadFile]], File()] = None,
         response_tone: ResponseTone = ResponseTone.PROFESSIONAL,
         language_style: LanguageStyle = LanguageStyle.SIMPLE
 ):
@@ -35,8 +35,14 @@ def get_diagnose(
         This endpoint serves as a contact with GenAI API,
         to obtain a diagnosis based on the description.
     """
-    logger.debug(f"Symptom images: {symptom_images}")
-    upload_images(current_user, symptom_images)
+    logger.info(f"Symptom images: {symptom_images}")
+
+    uploaded_images = None
+    image_files = []
+    if symptom_images is not None:
+        image_paths = upload_images(current_user, symptom_images)
+        image_files = [open(path, "rb") for path in image_paths]
+
     request_failed_msg = "Requesting diagnose failed, please try again later."
     try:
         patient_report = PatientReport(
@@ -48,12 +54,20 @@ def get_diagnose(
         )
 
         prompt = build_diagnose_prompt(patient_report)
-
         response = client.responses.parse(
             model="gpt-4.1",
-            input=[  # enable adding pictures and enforce size limits (costs)
+            input=[
                 {"role": "system", "content": prompt.system_instruction},
-                {"role": "user", "content": prompt.query}
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": prompt.query},
+                        *[
+                            {"type": "input_image", "image_url": image, "detail": "high"}
+                            for image in image_files
+                        ]
+                    ]
+                }
             ],
             temperature=prompt.temperature,
             text_format=DoctorsResponse,
@@ -67,14 +81,36 @@ def get_diagnose(
 
         parsed_response = response_content.parsed
         jsonable_response = jsonable_encoder(parsed_response)
-
-        # TODO: implement saving the search (with optionally added images and received diagnoses)
+        # TODO: saving search
         # save_search(report=patient_report, current_user=current_user, images=)
 
         return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_response)
-    # TODO: catch more exceptions - read open API docs to fig. out which can be raised by parse()
     except ValidationError as e:
-        validation_error_message = f"Validation error: {e.errors}"
-        logger.error(validation_error_message)
-
-        return error_response(status_code=status.HTTP_400_BAD_REQUEST, message=validation_error_message)
+        logger.error(f"OpenAI Validation error: {e}")
+        return error_response(status_code=status.HTTP_400_BAD_REQUEST,
+                              message="Invalid output from AI service. Please try again later.")
+    except APIError as e:
+        logger.error(f"OpenAI API error: {e}")
+        return error_response(status_code=status.HTTP_502_BAD_GATEWAY,
+                              message="AI service is unavailable. Please try again later.")
+    except RateLimitError as e:
+        logger.warning(f"Rate limit exceeded: {e}")
+        return error_response(status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                              message="Too many requests. Please wait and try again.")
+    except BadRequestError as e:
+        logger.error(f"Bad request: {e}")
+        return error_response(status_code=status.HTTP_400_BAD_REQUEST, message="Invalid input.")
+    except AuthenticationError as e:
+        logger.critical(f"Authentication failed: {e}")
+        return error_response(status_code=status.HTTP_401_UNAUTHORIZED,
+                              message="Authentication with AI service failed.")
+    except Exception as e:
+        logger.exception("Unexpected error while processing AI response.")
+        return error_response(message="An unexpected error occurred while obtaining the diagnosis.")
+    finally:
+        logger.info("Cleaning image_file leftovers.")
+        for image in image_files:
+            try:
+                image.close()
+            except Exception as close_error:
+                logger.warning(f"Failed to close image properly: {close_error}")
