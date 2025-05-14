@@ -1,4 +1,4 @@
-from typing import Annotated, List, Optional
+from typing import Annotated, List
 
 from fastapi import Depends, File, Form, status, UploadFile, APIRouter
 from fastapi.encoders import jsonable_encoder
@@ -12,7 +12,7 @@ from app.core.logging import logger
 from app.core.security import get_current_user
 from app.models.consultation import ResponseTone, LanguageStyle, DoctorsResponse, PatientReport
 from app.models.user import User
-from app.services.image_service import upload_images
+from app.services.image_service import upload_images, encode_images_to_base64, base64_images_to_urls
 from app.services.prompt_service import build_diagnose_prompt
 
 router = APIRouter()
@@ -27,7 +27,7 @@ def get_diagnose(
         symptoms: Annotated[str, Form()],
         duration: Annotated[str | None, Form()] = None,
         age_years: Annotated[int | None, Form()] = None,
-        symptom_images: Annotated[Optional[List[UploadFile]], File()] = None,
+        symptom_images: List[UploadFile] = File(default=[]),
         response_tone: ResponseTone = ResponseTone.PROFESSIONAL,
         language_style: LanguageStyle = LanguageStyle.SIMPLE
 ):
@@ -37,13 +37,10 @@ def get_diagnose(
     """
     logger.info(f"Symptom images: {symptom_images}")
 
-    uploaded_images = None
-    image_files = []
-    if symptom_images is not None:
-        image_paths = upload_images(current_user, symptom_images)
-        image_files = [open(path, "rb") for path in image_paths]
+    image_paths = upload_images(current_user, symptom_images)
+    base64_images = encode_images_to_base64(image_paths)
+    image_urls = base64_images_to_urls(base64_images)
 
-    request_failed_msg = "Requesting diagnose failed, please try again later."
     try:
         patient_report = PatientReport(
             response_tone=response_tone,
@@ -62,10 +59,7 @@ def get_diagnose(
                     "role": "user",
                     "content": [
                         {"type": "input_text", "text": prompt.query},
-                        *[
-                            {"type": "input_image", "image_url": image, "detail": "high"}
-                            for image in image_files
-                        ]
+                        *[{"type": "input_image", "image_url": url, "detail": "high"} for url in image_urls]
                     ]
                 }
             ],
@@ -77,7 +71,7 @@ def get_diagnose(
 
         if not response_content.parsed:
             logger.error("OpenAI API did not parse the response properly.")
-            return error_response(message=request_failed_msg)
+            return error_response(message="Requesting diagnose failed, please try again later.")
 
         parsed_response = response_content.parsed
         jsonable_response = jsonable_encoder(parsed_response)
@@ -107,10 +101,3 @@ def get_diagnose(
     except Exception as e:
         logger.exception("Unexpected error while processing AI response.")
         return error_response(message="An unexpected error occurred while obtaining the diagnosis.")
-    finally:
-        logger.info("Cleaning image_file leftovers.")
-        for image in image_files:
-            try:
-                image.close()
-            except Exception as close_error:
-                logger.warning(f"Failed to close image properly: {close_error}")

@@ -1,3 +1,4 @@
+import base64
 import os
 import shutil
 import uuid
@@ -28,6 +29,7 @@ def check_upload_criteria(current_user: User, symptom_images: List[UploadFile]):
             detail=f"Too many images. Maximum allowed count is {max_images_count}."
         )
 
+
 def upload_images(current_user: User, symptom_images: List[UploadFile]):
     check_upload_criteria(current_user, symptom_images)
 
@@ -56,3 +58,19 @@ def upload_images(current_user: User, symptom_images: List[UploadFile]):
         saved_img_paths.append(upload_destination)
 
     return saved_img_paths
+
+
+# for development: encode image to base64 format
+# for deployment: serve mounted static files directly
+def image_to_base64(image_path: str):
+    with open(image_path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode("utf-8")
+
+
+# for development - convert list of image paths to a list of base64 strings
+def encode_images_to_base64(image_paths: list[str]):
+    return [image_to_base64(path) for path in image_paths]
+
+
+def base64_images_to_urls(base64_images: list[str]):
+    return [f"data:image/jpeg;base64,{image}" for image in base64_images]
