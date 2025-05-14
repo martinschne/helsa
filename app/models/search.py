@@ -31,7 +31,7 @@ class SearchDiagnose(SQLModel, table=True):
 
 class SearchImage(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
-    image_url: str = Field(nullable=False)
+    image_src: str = Field(nullable=False)
     width: int = Field(nullable=False)
     height: int = Field(nullable=False)
     search_id: uuid.UUID = Field(foreign_key="search.id")

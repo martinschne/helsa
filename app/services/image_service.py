@@ -1,9 +1,9 @@
 import base64
 import os
-import shutil
 import uuid
-from typing import List
 
+from PIL import Image, ExifTags
+from PIL.Image import Resampling
 from fastapi import HTTPException, status, UploadFile
 
 from app.core.config import settings
@@ -11,11 +11,31 @@ from app.core.exceptions import error_response
 from app.models.user import User
 
 
-def adjust_image_resolution():
-    pass
+def _get_exif_orientation_key():
+    orientation = None
+    for orientation_key in ExifTags.TAGS.keys():
+        if ExifTags.TAGS[orientation_key] == 'Orientation':
+            orientation = orientation_key
+
+    return orientation
 
 
-def check_upload_criteria(current_user: User, symptom_images: List[UploadFile]):
+def _rotate_image(image: Image.Image):
+    image_exif = image.getexif()
+    if image_exif:
+        orientation_key = _get_exif_orientation_key()
+        exif = dict(image_exif.items())
+        if exif.get(orientation_key) == 3:
+            image = image.rotate(180, expand=True)
+        elif exif.get(orientation_key) == 6:
+            image = image.rotate(270, expand=True)
+        elif exif.get(orientation_key) == 8:
+            image = image.rotate(90, expand=True)
+
+    return image
+
+
+def check_upload_criteria(current_user: User, symptom_images: list[UploadFile]):
     max_images_count = 3
     if symptom_images is not None and not current_user.has_premium_tier:
         raise HTTPException(
@@ -30,34 +50,45 @@ def check_upload_criteria(current_user: User, symptom_images: List[UploadFile]):
         )
 
 
-def upload_images(current_user: User, symptom_images: List[UploadFile]):
-    check_upload_criteria(current_user, symptom_images)
+def upload_images(user: User, symptom_images: list[UploadFile]):
+    check_upload_criteria(user, symptom_images)
 
-    saved_img_paths = []
+    saved_images = []
     allowed_mime_types = {"image/jpeg", "image/png", "image/webp"}
-    for image in symptom_images:
-        if image.content_type not in allowed_mime_types:
+    for img_file in symptom_images:
+        if img_file.content_type not in allowed_mime_types:
             raise HTTPException(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                 detail="Unsupported media type: only image files in jpeg, png or webp format are allowed."
             )
 
-        # image_data = await image.read()
-        # image = Image.open(io.BytesIO(image_data))
-        uploaded_filename = f"{uuid.uuid4()}{os.path.splitext(image.filename)[1]}"
+        uploaded_filename = f"{uuid.uuid4()}{os.path.splitext(img_file.filename)[1]}"
         upload_destination = os.path.join(settings.UPLOADS_DIRECTORY, uploaded_filename)
         try:
-            with open(upload_destination, "wb") as file_buffer:
-                shutil.copyfileobj(image.file, file_buffer)
+            # process original image
+            image = Image.open(img_file.file)
+            image = image.convert("RGB")
+            image = _rotate_image(image)
+            image.thumbnail(size=(2048, 2048), resample=Resampling.LANCZOS)
+            # collect the properties for new image
+            mode = image.mode
+            size = image.size
+            image_data = list(image.getdata())
+            image.close()
+            # create and save new image - based on original, without exif data
+            image_sans_exif = Image.new(mode, size)
+            image_sans_exif.putdata(image_data)
+            image_sans_exif.filename = upload_destination
+            image_sans_exif.save(fp=upload_destination, format='JPEG', optimize=True)
         except IOError:
             return error_response(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message="Error occurred when saving images. Please try again later."
             )
 
-        saved_img_paths.append(upload_destination)
+        saved_images.append(image_sans_exif)
 
-    return saved_img_paths
+    return saved_images
 
 
 # for development: encode image to base64 format
