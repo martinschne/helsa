@@ -54,19 +54,14 @@ async def get_access_token(
 @router.post("/register-user", status_code=status.HTTP_201_CREATED)
 def register_user(user_create: UserCreate, session: DBSessionDependency):
     # Check for duplicate email (username)
-    username_check = session.exec(
-        select(User).where(User.username == user_create.username)
-    ).first()
+    username_check = session.exec(select(User).where(User.username == user_create.username)).first()
     if username_check:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User with this email already exists",
         )
 
-    user = User(
-        username=user_create.username,
-        password_hash=hash_password(user_create.password),
-    )
+    user = User(username=user_create.username, hash_password=hash_password(user_create.password))
     session.add(user)
     session.commit()
     session.refresh(user)

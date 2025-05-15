@@ -17,13 +17,14 @@ router = APIRouter(
 @router.post("/set-user-flags")
 def set_user_flags(user_flags_request: UserFlagsRequest, session: DBSessionDependency):
     success_message = (f"User {user_flags_request.username} have been "
-                       f"updated with flags: {str(str(user_flags_request.user_flags.model_dump_json()))}")
+                       f"updated with flags: "
+                       f"{str(str(user_flags_request.user_flags.model_dump_json(exclude_none=True)))}")
 
     user = get_user(str(user_flags_request.username), session)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"User {user_flags_request.user_name} not found. Flags were not set."
+            detail=f"User {user_flags_request.username} not found. Flags were not set."
         )
 
     save_user_flags(user, user_flags_request.user_flags, session)

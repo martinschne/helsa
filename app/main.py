@@ -13,16 +13,19 @@ from .routers import access, diagnose, admin
 
 os.makedirs(settings.UPLOADS_DIRECTORY, exist_ok=True)
 
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     create_db_and_tables()
     yield
+
 
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(access.router)
 app.include_router(diagnose.router)
 app.include_router(admin.router)
+
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
