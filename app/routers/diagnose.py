@@ -13,6 +13,7 @@ from app.core.security import get_current_user
 from app.core.types import DBSessionDependency
 from app.models.consultation import ResponseTone, LanguageStyle, DoctorsResponse, PatientReport
 from app.models.user import User
+from app.routers import constants
 from app.services.image_service import upload_images, encode_images_to_base64, base64_images_to_urls
 from app.services.prompt_service import build_diagnose_prompt
 from app.services.search_service import save_search, create_search
@@ -38,8 +39,6 @@ def get_diagnose(
         This endpoint serves as a contact with GenAI API,
         to obtain a diagnosis based on the description.
     """
-    logger.info(f"Symptom images: {symptom_images}")
-
     images = upload_images(current_user, symptom_images)
     image_paths = [image.filename for image in images]
     base64_images = encode_images_to_base64(image_paths)
@@ -74,8 +73,8 @@ def get_diagnose(
 
         parsed_response = response.output[0].content[0].parsed
         if not parsed_response:
-            logger.error("OpenAI API did not parse the response properly.")
-            return error_response(message="Requesting diagnose failed, please try again later.")
+            logger.error(constants.DIAGNOSE_LOG_REQUEST_NOT_PARSED)
+            return error_response(message=constants.DIAGNOSE_EXC_MSG_REQUEST_FAILED)
 
         search = create_search(
             report=patient_report,
@@ -87,24 +86,25 @@ def get_diagnose(
 
         return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_encoder(parsed_response))
     except ValidationError as e:
-        logger.error(f"OpenAI Validation error: {e}")
+        logger.error(f"Validation error: {e}")
         return error_response(status_code=status.HTTP_400_BAD_REQUEST,
-                              message="Invalid output from AI service. Please try again later.")
+                              message=constants.DIAGNOSE_EXC_MSG_OPENAI_VALIDATION_ERROR)
     except APIError as e:
-        logger.error(f"OpenAI API error: {e}")
+        logger.error(f"API error: {e}")
         return error_response(status_code=status.HTTP_502_BAD_GATEWAY,
-                              message="AI service is not available. Please try again later.")
+                              message=constants.DIAGNOSE_EXC_MSG_OPENAI_API_ERROR)
     except RateLimitError as e:
         logger.warning(f"Rate limit exceeded: {e}")
         return error_response(status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                              message="Too many requests. Please wait and retry later.")
+                              message=constants.DIAGNOSE_EXC_MSG_RATE_LIMIT_ERROR)
     except BadRequestError as e:
         logger.error(f"Bad request: {e}")
-        return error_response(status_code=status.HTTP_400_BAD_REQUEST, message="Invalid input.")
+        return error_response(status_code=status.HTTP_400_BAD_REQUEST,
+                              message=constants.DIAGNOSE_EXC_MSG_BAD_REQUEST_ERROR)
     except AuthenticationError as e:
         logger.critical(f"Authentication failed: {e}")
         return error_response(status_code=status.HTTP_401_UNAUTHORIZED,
-                              message="Authentication with AI service failed.")
+                              message=constants.DIAGNOSE_EXC_MSG_AUTHENTICATION_ERROR)
     except Exception as e:
-        logger.exception("Unexpected error while obtaining AI response.")
-        return error_response(message="An unexpected error occurred while obtaining the diagnosis.")
+        logger.exception(f"Unexpected error: {e}")
+        return error_response(message=constants.DIAGNOSE_EXC_MSG_UNEXPECTED_ERROR)

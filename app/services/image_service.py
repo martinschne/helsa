@@ -9,6 +9,7 @@ from fastapi import HTTPException, status, UploadFile
 from app.core.config import settings
 from app.core.exceptions import error_response
 from app.models.user import User
+from app.services import constants
 
 
 def _get_exif_orientation_key():
@@ -40,13 +41,13 @@ def check_upload_criteria(current_user: User, symptom_images: list[UploadFile]):
     if symptom_images is not None and not current_user.has_premium_tier:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail="For uploading images you need to have a paid premium tier."
+            detail=constants.IMAGE_SERVICE_EXC_MSG_NO_PREMIUM_TIER
         )
 
     if symptom_images is not None and len(symptom_images) > max_images_count:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Too many images. Maximum allowed count is {max_images_count}."
+            detail=constants.IMAGE_SERVICE_EXC_MSG_IMAGE_COUNT_EXCEEDED.format(max_images_count)
         )
 
 
@@ -59,7 +60,7 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
         if img_file.content_type not in allowed_mime_types:
             raise HTTPException(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail="Unsupported media type: only image files in jpeg, png or webp format are allowed."
+                detail=constants.IMAGE_SERVICE_EXC_MSG_UNSUPPORTED_IMAGE_FORMAT
             )
 
         uploaded_filename = f"{uuid.uuid4()}{os.path.splitext(img_file.filename)[1]}"
@@ -83,7 +84,7 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
         except IOError:
             return error_response(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                message="Error occurred when saving images. Please try again later."
+                message=constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR
             )
 
         saved_images.append(image_sans_exif)

@@ -2,6 +2,7 @@ from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import select
 
@@ -10,6 +11,7 @@ from app.core.security import create_access_token, hash_password
 from app.core.types import DBSessionDependency
 from app.models.security import Token
 from app.models.user import UserCreate, User
+from app.routers import constants
 from app.services.auth_service import authenticate_user
 
 router = APIRouter(
@@ -35,7 +37,7 @@ async def get_access_token(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail=constants.ACCESS_EXC_MSG_INCORRECT_CREDENTIALS,
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -48,17 +50,17 @@ async def get_access_token(
         expires_delta=access_token_expires,
     )
 
-    return Token(access_token=access_token, token_type="bearer")
+    return Token(access_token=access_token, token_type=constants.ACCESS_TOKEN_TYPE)
 
 
-@router.post("/register-user", status_code=status.HTTP_201_CREATED)
+@router.post("/register-user")
 def register_user(user_create: UserCreate, session: DBSessionDependency):
     # Check for duplicate email (username)
     username_check = session.exec(select(User).where(User.username == user_create.username)).first()
     if username_check:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User with this email already exists",
+            detail=constants.ACCESS_EXC_MSG_USERNAME_EXISTS,
         )
 
     user = User(username=user_create.username, hash_password=hash_password(user_create.password))
@@ -66,4 +68,7 @@ def register_user(user_create: UserCreate, session: DBSessionDependency):
     session.commit()
     session.refresh(user)
 
-    return {"message": f"User: {user.username} created successfully"}
+    return JSONResponse(
+        status_code=status.HTTP_201_CREATED,
+        content={"message": constants.ACCESS_SUCCESS_MSG_USER_CREATED}
+    )

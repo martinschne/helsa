@@ -1,0 +1,16 @@
+ACCESS_EXC_MSG_INCORRECT_CREDENTIALS = "Incorrect username or password"
+ACCESS_EXC_MSG_USERNAME_EXISTS = "User with this email already exists"
+ACCESS_SUCCESS_MSG_USER_CREATED = "User was successfully created!"
+ACCESS_TOKEN_TYPE = "bearer"
+
+ADMIN_SUCCESS_MSG_FLAGS_SET = "User have been updated with flags: {flags}"
+ADMIN_EXC_MSG_NO_USER_FLAGS_UNSET = "User was not found. Flags unset."
+
+DIAGNOSE_LOG_REQUEST_NOT_PARSED = "OpenAI API did not parse the response properly."
+DIAGNOSE_EXC_MSG_REQUEST_FAILED = "Requesting diagnose failed, please try again later."
+DIAGNOSE_EXC_MSG_OPENAI_VALIDATION_ERROR = "Invalid output from AI service. Please try again later."
+DIAGNOSE_EXC_MSG_OPENAI_API_ERROR = "AI service is not available. Please try again later."
+DIAGNOSE_EXC_MSG_RATE_LIMIT_ERROR = "Too many requests. Please wait and retry later."
+DIAGNOSE_EXC_MSG_BAD_REQUEST_ERROR = "Invalid input"
+DIAGNOSE_EXC_MSG_AUTHENTICATION_ERROR = "Authentication with AI service failed."
+DIAGNOSE_EXC_MSG_UNEXPECTED_ERROR = "Unexpected error occurred during obtaining diagnoses from AI service."
