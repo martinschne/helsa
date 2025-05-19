@@ -32,8 +32,8 @@ def get_diagnose(
         duration: Annotated[str | None, Form()] = None,
         age_years: Annotated[int | None, Form()] = None,
         symptom_images: List[UploadFile] = File(default=[]),
-        response_tone: ResponseTone = ResponseTone.PROFESSIONAL,
-        language_style: LanguageStyle = LanguageStyle.SIMPLE
+        response_tone: Annotated[ResponseTone, Form()] = ResponseTone.PROFESSIONAL,
+        language_style: Annotated[LanguageStyle, Form()] = LanguageStyle.SIMPLE
 ):
     """
         This endpoint serves as a contact with GenAI API,
