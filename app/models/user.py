@@ -5,8 +5,6 @@ from typing import List
 from pydantic import EmailStr, BaseModel
 from sqlmodel import SQLModel, Field, Relationship
 
-from app.models.search import Search
-
 
 class User(SQLModel, table=True):
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

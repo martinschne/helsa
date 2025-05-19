@@ -63,7 +63,7 @@ def register_user(user_create: UserCreate, session: DBSessionDependency):
             detail=constants.ACCESS_EXC_MSG_USERNAME_EXISTS,
         )
 
-    user = User(username=user_create.username, hash_password=hash_password(user_create.password))
+    user = User(username=user_create.username, password_hash=hash_password(user_create.password))
     session.add(user)
     session.commit()
     session.refresh(user)
