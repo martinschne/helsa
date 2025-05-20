@@ -31,7 +31,7 @@ def build_diagnose_prompt(patient_report: PatientReport) -> Prompt:
     Use {patient_report.language_style} language in the answer, as if you were speaking to an average person aged: 
     {patient_report.age_years if patient_report.age_years else "N/A"}.
     What would be the possible diagnosis and what are the recommended steps for the patient to do?
-    Please provide at least one possible diagnose, with considering all other possible diagnoses. Answer in slovak.
+    Please provide at least one possible diagnose, with considering all other possible diagnoses.
     """
 
     return Prompt(
