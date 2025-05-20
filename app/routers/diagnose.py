@@ -11,7 +11,7 @@ from app.core.exceptions import error_response
 from app.core.logging import logger
 from app.core.security import get_current_user
 from app.core.types import DBSessionDependency
-from app.models.consultation import ResponseTone, LanguageStyle, DoctorsResponse, PatientReport
+from app.models.consultation import ResponseTone, LanguageStyle, DoctorsResponse, PatientReport, SexAssignedAtBirth
 from app.models.user import User
 from app.routers import constants
 from app.services.image_service import upload_images, encode_images_to_base64, base64_images_to_urls
@@ -31,6 +31,7 @@ def get_diagnose(
         symptoms: Annotated[str, Form()],
         duration: Annotated[str | None, Form()] = None,
         age_years: Annotated[int | None, Form()] = None,
+        saab: Annotated[SexAssignedAtBirth | None, Form()] = None,
         symptom_images: List[UploadFile] = File(default=[]),
         response_tone: Annotated[ResponseTone, Form()] = ResponseTone.PROFESSIONAL,
         language_style: Annotated[LanguageStyle, Form()] = LanguageStyle.SIMPLE
@@ -50,7 +51,8 @@ def get_diagnose(
             language_style=language_style,
             symptoms=symptoms,
             duration=duration,
-            age_years=age_years
+            age_years=age_years,
+            saab=saab
         )
 
         prompt = build_diagnose_prompt(patient_report)

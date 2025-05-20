@@ -22,9 +22,16 @@ class LanguageStyle(str, Enum):
     SIMPLE = "simple"
 
 
+class SexAssignedAtBirth(str, Enum):
+    MALE = "male"
+    FEMALE = "female"
+    INTERSEX = "intersex"
+
+
 class PatientReport(BaseModel):
     response_tone: ResponseTone = ResponseTone.PROFESSIONAL
     language_style: LanguageStyle = LanguageStyle.SIMPLE
+    saab: SexAssignedAtBirth | None = None
     symptoms: Annotated[str, StringConstraints(strip_whitespace=True, min_length=5, max_length=500)]
     duration: Annotated[str | None, StringConstraints(strip_whitespace=True, min_length=5, max_length=250)]
     age_years: Annotated[
