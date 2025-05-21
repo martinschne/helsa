@@ -61,7 +61,7 @@ async def get_current_user(
     Validate the token and verify it belongs to a registered user saved in db.
     :param token: OAuth2 access token passed in the Authorization header as a Bearer token.
     :param session: db session instance
-    :return: user instance obtained from database
+    :return: user instance obtained from db
     :raise: HTTPException with 401 status code when token is invalid or does
     not belong to a registered user.
     """
