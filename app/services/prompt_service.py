@@ -26,8 +26,8 @@ def build_diagnose_prompt(patient_report: PatientReport) -> Prompt:
     of objects instead of body parts, do NOT take them into account and inform the patient about it.
     Answer shortly, and use {patient_report.response_tone} tone.
     Answer using the same subject and framing as the input. 
-    For example, if the input begins with 'I ...', respond with 'You ...'. 
-    If the input begins with 'The patient ...', respond with 'The patient ...'.
+    For example, if the input uses 'I' pronoun, respond with using 'you'. 
+    If the input indirectly mentions symptoms of 'the patient', respond indirectly too using 'the patient' in the answer.
     Use {patient_report.language_style} language in the answer, as if you were speaking to an average person aged: 
     {patient_report.age_years if patient_report.age_years else "N/A"}.
     What would be the possible diagnosis and what are the recommended steps for the patient to do?
