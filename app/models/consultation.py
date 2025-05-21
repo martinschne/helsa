@@ -5,6 +5,7 @@ from pydantic import BaseModel, StringConstraints, Field
 
 
 class Prompt(BaseModel):
+    """ Represents a prompt with its settings. """
     system_instruction: Annotated[str | None, StringConstraints(strip_whitespace=True)]
     query: Annotated[str, StringConstraints(strip_whitespace=True, min_length=10)]
     temperature: float | None = Field(ge=0, le=2, default=None)
@@ -12,23 +13,27 @@ class Prompt(BaseModel):
 
 
 class ResponseTone(str, Enum):
+    """ Requested tone of the response and an attribute of the PatientReport model. """
     PROFESSIONAL = "professional"
     FRIENDLY = "friendly"
     FUNNY = "funny"
 
 
 class LanguageStyle(str, Enum):
+    """ Requested language style of the response and an attribute of the PatientReport model. """
     MEDICAL = "medical"
     SIMPLE = "simple"
 
 
 class SexAssignedAtBirth(str, Enum):
+    """ Sex assigned at birth and optional attribute of PatientReport model. """
     MALE = "male"
     FEMALE = "female"
     INTERSEX = "intersex"
 
 
 class PatientReport(BaseModel):
+    """ Model representing data provided by patient for obtaining the diagnoses. """
     response_tone: ResponseTone = ResponseTone.PROFESSIONAL
     language_style: LanguageStyle = LanguageStyle.SIMPLE
     saab: SexAssignedAtBirth | None = None
@@ -39,10 +44,12 @@ class PatientReport(BaseModel):
 
 
 class Diagnose(BaseModel):
+    """ Required format of a diagnosis present in response. """
     name: str
     description: str
     recommended_action: str
 
 
 class DoctorsResponse(BaseModel):
+    """ Model representing the format of returned response: list of diagnoses. """
     diagnoses: List[Diagnose]

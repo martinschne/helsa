@@ -7,6 +7,11 @@ from sqlmodel import SQLModel, Field, Relationship
 
 
 class User(SQLModel, table=True):
+    """
+    DB model defining data saved into 'user' table.
+    It also defines relationships to other sql models:
+        * zero or more searches for one user
+    """
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     username: EmailStr = Field(index=True, nullable=False, unique=True)
     password_hash: str = Field(nullable=False)
@@ -19,6 +24,12 @@ class User(SQLModel, table=True):
 
 
 class UserCreate(BaseModel):
+    """
+    Model holding credentials for registering a new user.
+    It also contains password validation. A valid password must:
+        * be at least eight characters long
+        * contain at least one uppercase, one lowercase character and one digit
+    """
     username: EmailStr
     password: str
 
@@ -37,6 +48,7 @@ class UserCreate(BaseModel):
 
 
 class UserFlags(BaseModel):
+    """ Model encapsulating user flags for user settings. """
     is_verified: bool | None = None
     is_active: bool | None = None
     is_admin: bool | None = None
@@ -45,5 +57,6 @@ class UserFlags(BaseModel):
 
 
 class UserFlagsRequest(BaseModel):
+    """ Request model for setting user flags on user. """
     username: EmailStr
     user_flags: UserFlags

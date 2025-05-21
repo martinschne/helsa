@@ -8,6 +8,13 @@ from app.models.consultation import ResponseTone, LanguageStyle
 
 
 class Search(SQLModel, table=True):
+    """
+    DB model defining data saved into the 'search' table.
+    It also defines relationships to other sql models:
+        * zero or more searches for one user
+        * zero or more search images for one search
+        * zero or more diagnoses for one search
+    """
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     symptoms: str = Field(nullable=False)
     diagnoses: list["SearchDiagnose"] = Relationship(back_populates="search", cascade_delete=True)
@@ -21,6 +28,10 @@ class Search(SQLModel, table=True):
 
 
 class SearchDiagnose(SQLModel, table=True):
+    """
+    DB model defining diagnose related to a search and its attributes.
+    Each search diagnose belongs to one specific search.
+    """
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     name: str = Field(nullable=False)
     description: str = Field(nullable=False)
@@ -30,6 +41,10 @@ class SearchDiagnose(SQLModel, table=True):
 
 
 class SearchImage(SQLModel, table=True):
+    """
+    DB model defining image related to a search and its attributes.
+    Each search image belongs to one specific search.
+    """
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
     image_src: str = Field(nullable=False)
     width: int = Field(nullable=False)
