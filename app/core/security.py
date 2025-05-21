@@ -20,6 +20,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify plain text password against stored hash.
+
     :param plain_password: password in plain text format
     :param hashed_password: password in hashed format
     :return: True if hashed plain password matches stored hashed password, otherwise False
@@ -30,6 +31,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def hash_password(password: str) -> str:
     """
     Hash a plain password using bcrypt.
+
     :param password: password in plain text format
     :return: password in hashed format
     """
@@ -38,10 +40,11 @@ def hash_password(password: str) -> str:
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
-    Create JWT access token with expiration date.
+    Create `JWT` access token with expiration date.
+
     :param data:
     :param expires_delta: specified time limit for keeping token alive
-    :return: JWT access token
+    :return: `JWT` access token
     """
     to_encode = data.copy()
     expire = (
@@ -59,10 +62,11 @@ async def get_current_user(
 ):
     """
     Validate the token and verify it belongs to a registered user saved in db.
-    :param token: OAuth2 access token passed in the Authorization header as a Bearer token.
-    :param session: db session instance
-    :return: user instance obtained from db
-    :raise: HTTPException with 401 status code when token is invalid or does
+
+    :param token: `OAuth2` access token passed in the `Authorization header` as a `Bearer` token.
+    :param session: db `Session` instance
+    :return: `User` instance obtained from db
+    :raise: `HTTPException` with 401 status code when token is invalid or does
     not belong to a registered user.
     """
     credentials_exception = HTTPException(

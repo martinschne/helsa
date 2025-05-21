@@ -9,7 +9,8 @@ from app.models.consultation import ResponseTone, LanguageStyle
 
 class Search(SQLModel, table=True):
     """
-    DB model defining data saved into the 'search' table.
+    DB model defining data saved into the `search` table.
+
     It also defines relationships to other sql models:
         * zero or more searches for one user
         * zero or more search images for one search
@@ -29,7 +30,7 @@ class Search(SQLModel, table=True):
 
 class SearchDiagnose(SQLModel, table=True):
     """
-    DB model defining diagnose related to a search and its attributes.
+    DB model defining diagnose related to a `Search` model and its attributes.
     Each search diagnose belongs to one specific search.
     """
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)
@@ -42,7 +43,7 @@ class SearchDiagnose(SQLModel, table=True):
 
 class SearchImage(SQLModel, table=True):
     """
-    DB model defining image related to a search and its attributes.
+    DB model defining image related to a `Search` model and its attributes.
     Each search image belongs to one specific search.
     """
     id: uuid.UUID = Field(default_factory=uuid.uuid4, primary_key=True)

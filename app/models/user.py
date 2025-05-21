@@ -8,7 +8,8 @@ from sqlmodel import SQLModel, Field, Relationship
 
 class User(SQLModel, table=True):
     """
-    DB model defining data saved into 'user' table.
+    DB model defining data saved into `user` table.
+
     It also defines relationships to other sql models:
         * zero or more searches for one user
     """
@@ -26,6 +27,7 @@ class User(SQLModel, table=True):
 class UserCreate(BaseModel):
     """
     Model holding credentials for registering a new user.
+
     It also contains password validation. A valid password must:
         * be at least eight characters long
         * contain at least one uppercase, one lowercase character and one digit

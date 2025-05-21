@@ -13,20 +13,20 @@ class Prompt(BaseModel):
 
 
 class ResponseTone(str, Enum):
-    """ Requested tone of the response and an attribute of the PatientReport model. """
+    """ Requested tone of the response and an attribute of the `PatientReport` model. """
     PROFESSIONAL = "professional"
     FRIENDLY = "friendly"
     FUNNY = "funny"
 
 
 class LanguageStyle(str, Enum):
-    """ Requested language style of the response and an attribute of the PatientReport model. """
+    """ Requested language style of the response and an attribute of the `PatientReport` model. """
     MEDICAL = "medical"
     SIMPLE = "simple"
 
 
 class SexAssignedAtBirth(str, Enum):
-    """ Sex assigned at birth and optional attribute of PatientReport model. """
+    """ Sex assigned at birth and optional attribute of `PatientReport` model. """
     MALE = "male"
     FEMALE = "female"
     INTERSEX = "intersex"
