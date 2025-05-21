@@ -1,14 +1,14 @@
-from fastapi.responses import JSONResponse
+from fastapi.exceptions import HTTPException
 
 
-def error_response(message: str = "Internal server error",
-                   status_code: int = 500) -> JSONResponse:
+def exception_response(message: str = "Internal server error",
+                       status_code: int = 500) -> HTTPException:
     """
     Factory method for error responses.
 
     :param message: optionally customizable error message
     :param status_code: http response status code
-    :return: `JSONResponse` object with status code and json content in format:
-    ``{"detail": "message"}``
+    :return: `HTTPException` object with status code and detail
     """
-    return JSONResponse(status_code=status_code, content={"detail": message})
+    return HTTPException(status_code=status_code, detail=message)
+

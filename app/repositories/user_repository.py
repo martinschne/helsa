@@ -5,7 +5,7 @@ from app.models.user import User, UserFlags
 
 def get_user(username: str, session: Session) -> User:
     """
-    Helper method to get a user instance from db.
+    Helper method to get a `User` instance from db.
 
     :param username: username to search for in the db
     :param session: db `Session` instance

@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.requests import Request
 
 from app.core.config import settings
-from app.core.exceptions import error_response
+from app.core.exceptions import exception_response
 from app.core.logging import logger
 from app.database import create_db_and_tables
 from .routers import access, diagnose, admin
@@ -36,7 +36,7 @@ async def general_exception_handler(request: Request, exc: Exception):
     :return:
     """
     logger.error(f"Unexpected error: {exc}", exc_info=True)
-    return error_response()
+    raise exception_response()
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@ from PIL.Image import Resampling
 from fastapi import HTTPException, status, UploadFile
 
 from app.core.config import settings
-from app.core.exceptions import error_response
+from app.core.exceptions import exception_response
 from app.models.user import User
 from app.services import constants
 
@@ -82,7 +82,7 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
             image_sans_exif.filename = upload_destination
             image_sans_exif.save(fp=upload_destination, format='JPEG', optimize=True)
         except IOError:
-            return error_response(
+            raise exception_response(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR
             )

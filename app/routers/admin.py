@@ -15,8 +15,18 @@ router = APIRouter(
 )
 
 
-@router.post("/set-user-flags")
+@router.post("/set-user-flags",
+             summary=constants.ADMIN_SET_USER_FLAGS_SUMMARY,
+             description=constants.ADMIN_SET_USER_FLAGS_DESCRIPTION)
 def set_user_flags(user_flags_request: UserFlagsRequest, session: DBSessionDependency):
+    """
+    This endpoint allows admin to set user flags for an existing user saved in db.
+
+    :param user_flags_request: request model for setting user flags for given username
+    :param session: db `Session` instance
+    :raise HttpException (400 Bad Request): if username from user_flags_request was not found in db.
+    :return: `JSONResponse` with success message, if flags were set and saved in user db record.
+    """
     success_message = constants.ADMIN_SUCCESS_MSG_FLAGS_SET.format(
         flags=str(user_flags_request.user_flags.model_dump_json(exclude_none=True))
     )

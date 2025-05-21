@@ -7,7 +7,7 @@ from openai import OpenAI, APIError, RateLimitError, BadRequestError, Authentica
 from pydantic import ValidationError
 
 from app.core.config import settings
-from app.core.exceptions import error_response
+from app.core.exceptions import exception_response
 from app.core.logging import logger
 from app.core.security import get_current_user
 from app.core.types import DBSessionDependency
@@ -18,13 +18,18 @@ from app.services.image_service import upload_images, encode_images_to_base64, b
 from app.services.prompt_service import build_diagnose_prompt
 from app.services.search_service import save_search, create_search
 
-router = APIRouter()
+router = APIRouter(
+    tags=["diagnose"]
+)
 
 client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=120)
 
 
-# TODO: implement rate limits for this endpoint
-@router.post("/diagnose", tags=["diagnose"])
+@router.post(
+    "/diagnose",
+    summary=constants.DIAGNOSE_GET_DIAGNOSE_SUMMARY,
+    description=constants.DIAGNOSE_GET_DIAGNOSE_DESCRIPTION
+)
 def get_diagnose(
         current_user: Annotated[User, Depends(get_current_user)],
         session: DBSessionDependency,
@@ -37,8 +42,21 @@ def get_diagnose(
         language_style: Annotated[LanguageStyle, Form()] = LanguageStyle.SIMPLE
 ):
     """
-        This endpoint serves as a contact with GenAI API,
-        to obtain a diagnosis based on the description.
+    This endpoint serves to obtain an AI generated diagnostic response
+    from OpenAI API based on provided patient data.
+
+    :param current_user: current `User` instance
+    :param session: db `Session` instance
+    :param symptoms: description of patient's symptoms
+    :param duration: duration of the symptoms (optional)
+    :param age_years: patient's age in years (optional)
+    :param saab: patient's sex assigned at birth (optional)
+    :param symptom_images: images of visible symptoms on the body (optional)
+    :param response_tone: requested tone of the response (default: `professional`)
+    :param language_style: requested language style (default: `simple`)
+    :raise HttpException: if following exception raises during contacting OpenAI API:
+    `ValidationError` `APIError`, `RateLimitError`, `BadRequestError`, `AuthenticationError`, `Exception`
+    :return: `JSONResponse` with content set to parsed AI response json if successfully obtained
     """
     images = upload_images(current_user, symptom_images)
     image_paths = [image.filename for image in images]
@@ -76,7 +94,7 @@ def get_diagnose(
         parsed_response = response.output[0].content[0].parsed
         if not parsed_response:
             logger.error(constants.DIAGNOSE_LOG_REQUEST_NOT_PARSED)
-            return error_response(message=constants.DIAGNOSE_EXC_MSG_REQUEST_FAILED)
+            raise exception_response(message=constants.DIAGNOSE_EXC_MSG_REQUEST_FAILED)
 
         search = create_search(
             report=patient_report,
@@ -89,24 +107,24 @@ def get_diagnose(
         return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_encoder(parsed_response))
     except ValidationError as e:
         logger.error(f"Validation error: {e}")
-        return error_response(status_code=status.HTTP_400_BAD_REQUEST,
-                              message=constants.DIAGNOSE_EXC_MSG_OPENAI_VALIDATION_ERROR)
+        raise exception_response(status_code=status.HTTP_400_BAD_REQUEST,
+                                 message=constants.DIAGNOSE_EXC_MSG_OPENAI_VALIDATION_ERROR)
     except APIError as e:
         logger.error(f"API error: {e}")
-        return error_response(status_code=status.HTTP_502_BAD_GATEWAY,
-                              message=constants.DIAGNOSE_EXC_MSG_OPENAI_API_ERROR)
+        raise exception_response(status_code=status.HTTP_502_BAD_GATEWAY,
+                                 message=constants.DIAGNOSE_EXC_MSG_OPENAI_API_ERROR)
     except RateLimitError as e:
         logger.warning(f"Rate limit exceeded: {e}")
-        return error_response(status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                              message=constants.DIAGNOSE_EXC_MSG_RATE_LIMIT_ERROR)
+        raise exception_response(status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                                 message=constants.DIAGNOSE_EXC_MSG_RATE_LIMIT_ERROR)
     except BadRequestError as e:
         logger.error(f"Bad request: {e}")
-        return error_response(status_code=status.HTTP_400_BAD_REQUEST,
-                              message=constants.DIAGNOSE_EXC_MSG_BAD_REQUEST_ERROR)
+        raise exception_response(status_code=status.HTTP_400_BAD_REQUEST,
+                                 message=constants.DIAGNOSE_EXC_MSG_BAD_REQUEST_ERROR)
     except AuthenticationError as e:
         logger.critical(f"Authentication failed: {e}")
-        return error_response(status_code=status.HTTP_401_UNAUTHORIZED,
-                              message=constants.DIAGNOSE_EXC_MSG_AUTHENTICATION_ERROR)
+        raise exception_response(status_code=status.HTTP_401_UNAUTHORIZED,
+                                 message=constants.DIAGNOSE_EXC_MSG_AUTHENTICATION_ERROR)
     except Exception as e:
-        logger.exception(f"Unexpected error: {e}")
-        return error_response(message=constants.DIAGNOSE_EXC_MSG_UNEXPECTED_ERROR)
+        logger.error(f"Unexpected error: {e}")
+        raise exception_response(message=constants.DIAGNOSE_EXC_MSG_UNEXPECTED_ERROR)

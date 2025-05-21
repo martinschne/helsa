@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class Token(BaseModel):
-    """ Standard response form for an authentication endpoint.  """
+    """ Standard response format for authentication endpoint. """
     access_token: str
     token_type: str
 
