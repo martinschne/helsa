@@ -1,4 +1,4 @@
-## Helsa - AI Health Advisor MVP
+## Helsa - AI Health Advisor (MVP)
 
 A minimal MVP backend built with **FastAPI**, using OAuth2 authentication, 
 modular architecture, and clean API design. 
