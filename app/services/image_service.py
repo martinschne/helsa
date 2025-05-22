@@ -12,7 +12,12 @@ from app.models.user import User
 from app.services import constants
 
 
-def _get_exif_orientation_key():
+def _get_exif_orientation_key() -> int | None:
+    """
+    Get orientation key from exif tags metadata.
+
+    :return: orientation key
+    """
     orientation = None
     for orientation_key in ExifTags.TAGS.keys():
         if ExifTags.TAGS[orientation_key] == 'Orientation':
@@ -22,6 +27,12 @@ def _get_exif_orientation_key():
 
 
 def _rotate_image(image: Image.Image):
+    """
+    Rotate image based on the orientation value obtained from its metadata.
+
+    :param image: `Image` object
+    :return: rotated image
+    """
     image_exif = image.getexif()
     if image_exif:
         orientation_key = _get_exif_orientation_key()
@@ -36,7 +47,19 @@ def _rotate_image(image: Image.Image):
     return image
 
 
-def check_upload_criteria(current_user: User, symptom_images: list[UploadFile]):
+def _check_upload_criteria(current_user: User, symptom_images: list[UploadFile]):
+    """
+    Check if user account and image fits criteria for uploading.
+
+    Uploading criteria:
+
+        * flag `has_premium_tier` set on `User` instance
+        * maximum length of `symptom_images` list is 3
+
+    :param current_user: `User` instance
+    :param symptom_images: list of files to upload
+    :return:
+    """
     max_images_count = 3
     if symptom_images is not None and not current_user.has_premium_tier:
         raise HTTPException(
@@ -52,7 +75,16 @@ def check_upload_criteria(current_user: User, symptom_images: list[UploadFile]):
 
 
 def upload_images(user: User, symptom_images: list[UploadFile]):
-    check_upload_criteria(user, symptom_images)
+    """
+    Process the user uploaded images and save them as static files.
+
+    If images are meeting the upload criteria, they are saved to static directory
+    on the server and the list `Image` instances is returned for further processing.
+    :param user: `User` instance - owner of images
+    :param symptom_images: list of files to upload
+    :return: list of `Image` instances
+    """
+    _check_upload_criteria(user, symptom_images)
 
     saved_images = []
     allowed_mime_types = {"image/jpeg", "image/png", "image/webp"}
@@ -92,17 +124,36 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
     return saved_images
 
 
-# for development: encode image to base64 format
-# for deployment: serve mounted static files directly
 def image_to_base64(image_path: str):
+    """
+    Encode image under provided path to base64 format.
+
+    :param image_path: path to the image
+    :return: base64-encoded image
+    """
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
 
 
-# for development - convert list of image paths to a list of base64 strings
 def encode_images_to_base64(image_paths: list[str]):
+    """
+    Encode images under provided paths to base64 format.
+
+    Intended for development purposes only.
+    For production serve static files directly instead of embedding them.
+    :param image_paths: list of image paths
+    :return: list of base64-encoded image strings
+    """
     return [image_to_base64(path) for path in image_paths]
 
 
 def base64_images_to_urls(base64_images: list[str]):
+    """
+    Convert a list of base64-encoded images to data URLs.
+
+    Intended for development purposes only.
+    For production serve static files directly instead of embedding them.
+    :param base64_images: list of base64-encoded image strings.
+    :return: list of data URLs in the format: data:image/jpeg;base64,<image data>.
+    """
     return [f"data:image/jpeg;base64,{image}" for image in base64_images]

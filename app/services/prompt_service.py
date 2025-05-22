@@ -2,6 +2,16 @@ from app.models.consultation import Prompt, PatientReport, ResponseTone
 
 
 def _get_configured_temperature(tone: ResponseTone) -> float:
+    """
+    Helper for getting the prompt temperature value based on requested response tone.
+
+    Returns higher temperature for `funny` or `friendly` response tone, allowing for slightly
+    more creative AI responses. Returns low temperature value for `professional` response tone
+    as more deterministic and exact output is needed.
+
+    :param tone: requested response tone
+    :return: set temperature value
+    """
     if tone == ResponseTone.FUNNY or tone == ResponseTone.FRIENDLY:
         return 0.3
     return 0.1
@@ -9,9 +19,10 @@ def _get_configured_temperature(tone: ResponseTone) -> float:
 
 def build_diagnose_prompt(patient_report: PatientReport) -> Prompt:
     """
-    May raise validation error.
-    :param patient_report:
-    :return:
+    Create and return `Prompt` based on data from `PatientReport`.
+
+    :param patient_report: model for holding the data about the patient
+    :return: `Prompt` instance constructed from dynamically created system instructions, prompt and temperature.
     """
     system_instruction = f"You are a {patient_report.response_tone} doctor."
     prompt = f"""
