@@ -30,10 +30,9 @@ app.include_router(admin.router)
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """
-    Designed for handling unexpected crashes.
-    :param request:
-    :param exc:
-    :return:
+    Handles uncaught exceptions and logs unexpected server errors.
+
+    Logs the error details and raises a standardized error response.
     """
     logger.error(f"Unexpected error: {exc}", exc_info=True)
     raise exception_response()
