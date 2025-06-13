@@ -3,11 +3,11 @@ import os
 import uuid
 
 from PIL import Image, ExifTags
-from PIL.Image import Resampling
 from fastapi import HTTPException, status, UploadFile
 
 from app.core.config import settings
 from app.core.exceptions import exception_response
+from app.core.logging import logger
 from app.models.user import User
 from app.services import constants
 
@@ -55,12 +55,18 @@ def _check_upload_criteria(current_user: User, symptom_images: list[UploadFile])
 
         * flag `has_premium_tier` set on `User` instance
         * maximum length of `symptom_images` list is 3
+        * maximum size of an image file is 5 MB
+        * image format is supported (jpeg, png, webp)
+
+    The request will be denied if criteria are not met for all uploaded images.
 
     :param current_user: `User` instance
     :param symptom_images: list of files to upload
     :return:
     """
     max_images_count = 3
+    allowed_mime_types = {"image/jpeg", "image/png", "image/webp"}
+
     if symptom_images is not None and not current_user.has_premium_tier:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -72,6 +78,18 @@ def _check_upload_criteria(current_user: User, symptom_images: list[UploadFile])
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=constants.IMAGE_SERVICE_EXC_MSG_IMAGE_COUNT_EXCEEDED.format(max_images_count)
         )
+
+    for img_file in symptom_images:
+        if img_file.size > 5 * 1024 * 1024:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=constants.IMAGE_SERVICE_EXC_MSG_IMAGE_TOO_LARGE
+            )
+        if img_file.content_type not in allowed_mime_types:
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=constants.IMAGE_SERVICE_EXC_MSG_UNSUPPORTED_IMAGE_FORMAT
+            )
 
 
 def upload_images(user: User, symptom_images: list[UploadFile]):
@@ -87,14 +105,7 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
     _check_upload_criteria(user, symptom_images)
 
     saved_images = []
-    allowed_mime_types = {"image/jpeg", "image/png", "image/webp"}
     for img_file in symptom_images:
-        if img_file.content_type not in allowed_mime_types:
-            raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail=constants.IMAGE_SERVICE_EXC_MSG_UNSUPPORTED_IMAGE_FORMAT
-            )
-
         uploaded_filename = f"{uuid.uuid4()}{os.path.splitext(img_file.filename)[1]}"
         upload_destination = os.path.join(settings.UPLOADS_DIRECTORY, uploaded_filename)
         try:
@@ -102,7 +113,6 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
             image = Image.open(img_file.file)
             image = image.convert("RGB")
             image = _rotate_image(image)
-            image.thumbnail(size=(2048, 2048), resample=Resampling.LANCZOS)
             # collect the properties for new image
             mode = image.mode
             size = image.size
@@ -112,14 +122,19 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
             image_sans_exif = Image.new(mode, size)
             image_sans_exif.putdata(image_data)
             image_sans_exif.filename = upload_destination
-            image_sans_exif.save(fp=upload_destination, format='JPEG', optimize=True)
         except IOError:
             raise exception_response(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR
             )
-
         saved_images.append(image_sans_exif)
+
+    for image_sans_exif in saved_images:
+        try:
+            image_sans_exif.save(fp=image_sans_exif.filename, optimize=True)
+        except OSError as e:
+            logger.error(constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR + ": " + str(e))
+            raise HTTPException(status_code=500, detail=constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR)
 
     return saved_images
 

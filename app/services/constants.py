@@ -2,3 +2,4 @@ IMAGE_SERVICE_EXC_MSG_NO_PREMIUM_TIER = "For uploading images you need to have a
 IMAGE_SERVICE_EXC_MSG_IMAGE_COUNT_EXCEEDED = "Too many images. Maximum allowed count is {}."
 IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR = "Error occurred when saving images. Please try again later."
 IMAGE_SERVICE_EXC_MSG_UNSUPPORTED_IMAGE_FORMAT = "This format is not supported for an image input."
+IMAGE_SERVICE_EXC_MSG_IMAGE_TOO_LARGE = "Uploaded image was too large. The request was denied."
