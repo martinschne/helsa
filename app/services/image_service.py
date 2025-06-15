@@ -3,6 +3,7 @@ import os
 import shutil
 import uuid
 from datetime import datetime
+from io import BytesIO
 
 from PIL import Image, ExifTags, UnidentifiedImageError
 from fastapi import HTTPException, status, UploadFile
@@ -105,7 +106,8 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
         upload_destination = os.path.join(settings.UPLOADS_DIRECTORY, uploaded_filename)
         try:
             # process original image
-            image = Image.open(fp=img_file.file, formats=["JPEG", "PNG", "WEBP"])
+            image = Image.open(fp=BytesIO(img_file.file.read()), formats=["JPEG", "PNG", "WEBP"])
+            img_format = image.format
             image = image.convert("RGB")
             image = _rotate_image(image)
             # collect the properties for new image
@@ -116,7 +118,8 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
             # create and save new image - based on original, without exif data
             image_sans_exif = Image.new(mode, size)
             image_sans_exif.putdata(image_data)
-            image_sans_exif.filename = upload_destination
+            image_sans_exif.filename = f"{upload_destination}.{img_format.lower()}"
+            image_sans_exif.format = img_format
         except UnidentifiedImageError as e:
             logger.error(constants.IMAGE_SERVICE_EXC_MSG_UNSUPPORTED_IMAGE_FORMAT + ": " + str(e))
             raise HTTPException(
@@ -129,12 +132,14 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR
             )
-        saved_images.append(image)
+        saved_images.append(image_sans_exif)
 
-    for image in saved_images:
+    for image_sans_exif in saved_images:
         try:
-            with open(f"{image.filename}.{image.format.lower()}", "wb") as uploaded_file:
-                shutil.copyfileobj(image.file, uploaded_file)
+            image_sans_exif.save(
+                fp=image_sans_exif.filename,
+                optimize=True
+            )
         except OSError as e:
             logger.error(constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR + ": " + str(e))
             raise HTTPException(status_code=500, detail=constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR)
