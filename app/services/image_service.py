@@ -56,7 +56,7 @@ def _check_upload_criteria(current_user: User, symptom_images: list[UploadFile])
 
         * flag `has_premium_tier` set on `User` instance
         * maximum length of `symptom_images` list is 3
-        * maximum size of an image file is 5 MB
+        * maximum size of an image file is 5 MiB
 
     The request will be denied if criteria are not met for all uploaded images.
 
