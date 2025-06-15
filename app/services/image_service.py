@@ -1,8 +1,9 @@
 import base64
 import os
 import uuid
+from datetime import datetime
 
-from PIL import Image, ExifTags
+from PIL import Image, ExifTags, UnidentifiedImageError
 from fastapi import HTTPException, status, UploadFile
 
 from app.core.config import settings
@@ -56,7 +57,6 @@ def _check_upload_criteria(current_user: User, symptom_images: list[UploadFile])
         * flag `has_premium_tier` set on `User` instance
         * maximum length of `symptom_images` list is 3
         * maximum size of an image file is 5 MB
-        * image format is supported (jpeg, png, webp)
 
     The request will be denied if criteria are not met for all uploaded images.
 
@@ -65,7 +65,6 @@ def _check_upload_criteria(current_user: User, symptom_images: list[UploadFile])
     :return:
     """
     max_images_count = 3
-    allowed_mime_types = {"image/jpeg", "image/png", "image/webp"}
 
     if symptom_images is not None and not current_user.has_premium_tier:
         raise HTTPException(
@@ -85,11 +84,6 @@ def _check_upload_criteria(current_user: User, symptom_images: list[UploadFile])
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=constants.IMAGE_SERVICE_EXC_MSG_IMAGE_TOO_LARGE
             )
-        if img_file.content_type not in allowed_mime_types:
-            raise HTTPException(
-                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-                detail=constants.IMAGE_SERVICE_EXC_MSG_UNSUPPORTED_IMAGE_FORMAT
-            )
 
 
 def upload_images(user: User, symptom_images: list[UploadFile]):
@@ -106,11 +100,11 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
 
     saved_images = []
     for img_file in symptom_images:
-        uploaded_filename = f"{uuid.uuid4()}{os.path.splitext(img_file.filename)[1]}"
+        uploaded_filename = f"{uuid.uuid4()}_{datetime.now().strftime("%Y%m%d-%H%M%S")}"
         upload_destination = os.path.join(settings.UPLOADS_DIRECTORY, uploaded_filename)
         try:
             # process original image
-            image = Image.open(img_file.file)
+            image = Image.open(fp=img_file.file, formats=["JPEG", "PNG", "WEBP"])
             image = image.convert("RGB")
             image = _rotate_image(image)
             # collect the properties for new image
@@ -122,7 +116,14 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
             image_sans_exif = Image.new(mode, size)
             image_sans_exif.putdata(image_data)
             image_sans_exif.filename = upload_destination
-        except IOError:
+        except UnidentifiedImageError as e:
+            logger.error(constants.IMAGE_SERVICE_EXC_MSG_UNSUPPORTED_IMAGE_FORMAT + ": " + str(e))
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=constants.IMAGE_SERVICE_EXC_MSG_UNSUPPORTED_IMAGE_FORMAT
+            )
+        except IOError as e:
+            logger.error(constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR + ": " + str(e))
             raise exception_response(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR
@@ -131,7 +132,7 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
 
     for image_sans_exif in saved_images:
         try:
-            image_sans_exif.save(fp=image_sans_exif.filename, optimize=True)
+            image_sans_exif.save(fp=image_sans_exif.filename, format=image_sans_exif.format, optimize=True)
         except OSError as e:
             logger.error(constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR + ": " + str(e))
             raise HTTPException(status_code=500, detail=constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR)
