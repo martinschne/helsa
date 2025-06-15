@@ -1,6 +1,5 @@
 import base64
 import os
-import shutil
 import uuid
 from datetime import datetime
 from io import BytesIO
@@ -136,10 +135,7 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
 
     for image_sans_exif in saved_images:
         try:
-            image_sans_exif.save(
-                fp=image_sans_exif.filename,
-                optimize=True
-            )
+            image_sans_exif.save(fp=image_sans_exif.filename, optimize=True)
         except OSError as e:
             logger.error(constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR + ": " + str(e))
             raise HTTPException(status_code=500, detail=constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR)
