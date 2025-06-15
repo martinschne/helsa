@@ -1,5 +1,6 @@
 import base64
 import os
+import shutil
 import uuid
 from datetime import datetime
 
@@ -100,7 +101,7 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
 
     saved_images = []
     for img_file in symptom_images:
-        uploaded_filename = f"{uuid.uuid4()}_{datetime.now().strftime("%Y%m%d-%H%M%S")}"
+        uploaded_filename = f"{datetime.now().strftime("%Y%m%d-%H%M%S")}_{uuid.uuid4()}"
         upload_destination = os.path.join(settings.UPLOADS_DIRECTORY, uploaded_filename)
         try:
             # process original image
@@ -110,7 +111,7 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
             # collect the properties for new image
             mode = image.mode
             size = image.size
-            image_data = list(image.getdata())
+            image_data = image.getdata()
             image.close()
             # create and save new image - based on original, without exif data
             image_sans_exif = Image.new(mode, size)
@@ -128,11 +129,12 @@ def upload_images(user: User, symptom_images: list[UploadFile]):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 message=constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR
             )
-        saved_images.append(image_sans_exif)
+        saved_images.append(image)
 
-    for image_sans_exif in saved_images:
+    for image in saved_images:
         try:
-            image_sans_exif.save(fp=image_sans_exif.filename, format=image_sans_exif.format, optimize=True)
+            with open(f"{image.filename}.{image.format.lower()}", "wb") as uploaded_file:
+                shutil.copyfileobj(image.file, uploaded_file)
         except OSError as e:
             logger.error(constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR + ": " + str(e))
             raise HTTPException(status_code=500, detail=constants.IMAGE_SERVICE_EXC_MSG_SAVING_IO_ERROR)
