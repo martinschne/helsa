@@ -4,7 +4,6 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     # env. variables
     SECRET_KEY: str
-    SUPERUSER_PASSWORD: str
     OPENAI_API_KEY: str
     UPLOADS_DIRECTORY: str
 

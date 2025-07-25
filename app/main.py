@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.exceptions import exception_response
 from app.core.logging import logger
 from app.database import create_db_and_tables
-from .routers import access, diagnose, admin
+from app.routers import access, diagnose, admin
 
 os.makedirs(settings.UPLOADS_DIRECTORY, exist_ok=True)
 

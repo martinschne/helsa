@@ -49,37 +49,39 @@ def _rotate_image(image: Image.Image):
     return image
 
 
-def _check_upload_criteria(current_user: User, symptom_images: list[UploadFile]):
+def _check_upload_criteria(current_user: User, symptom_images_list: list[UploadFile]):
     """
     Check if user account and image fits criteria for uploading.
 
     Uploading criteria:
 
         * flag `has_premium_tier` set on `User` instance
-        * maximum length of `symptom_images` list is 3
+        * maximum length of `symptom_images_list` is 3
         * maximum size of an image file is 5 MiB
 
     The request will be denied if criteria are not met for all uploaded images.
 
     :param current_user: `User` instance
-    :param symptom_images: list of files to upload
+    :param symptom_images_list: list of files to upload
     :return:
     """
     max_images_count = 3
+    symptom_images_list_count = len(symptom_images_list)
 
-    if symptom_images is not None and not current_user.has_premium_tier:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail=constants.IMAGE_SERVICE_EXC_MSG_NO_PREMIUM_TIER
-        )
+    if symptom_images_list_count > 0:
+        if not current_user.has_premium_tier:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED,
+                detail=constants.IMAGE_SERVICE_EXC_MSG_NO_PREMIUM_TIER
+            )
 
-    if symptom_images is not None and len(symptom_images) > max_images_count:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=constants.IMAGE_SERVICE_EXC_MSG_IMAGE_COUNT_EXCEEDED.format(max_images_count)
-        )
+        if symptom_images_list_count > max_images_count:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=constants.IMAGE_SERVICE_EXC_MSG_IMAGE_COUNT_EXCEEDED.format(max_images_count)
+            )
 
-    for img_file in symptom_images:
+    for img_file in symptom_images_list:
         if img_file.size > 5 * 1024 * 1024:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
