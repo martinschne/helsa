@@ -11,6 +11,7 @@ from app.core.logging import logger
 from app.database import create_db_and_tables
 from app.routers import access, diagnose, admin
 
+
 os.makedirs(settings.UPLOADS_DIRECTORY, exist_ok=True)
 
 

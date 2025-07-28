@@ -1,0 +1,6 @@
+.idea
+.vscode
+.env
+.venv/
+/app/static/
+**/__pycache__

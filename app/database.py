@@ -2,8 +2,12 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from app.core.config import settings
 
-engine = create_engine(settings.DATABASE_URL, echo=True)
+DB_USER = settings.POSTGRES_USER
+DB_PSW = settings.POSTGRES_PASSWORD
+DB_NAME = settings.POSTGRES_DB
+DATABASE_URL =  f"postgresql://{DB_USER}:{DB_PSW}@db:5432/{DB_NAME}"
 
+engine = create_engine(DATABASE_URL, echo=True)
 
 def create_db_and_tables():
     """ Create database and the table based on sql models created. """

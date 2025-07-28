@@ -1,7 +1,7 @@
-## Helsa - AI Health Advisor (MVP)
+# Helsa - AI Health Advisor
 
-A minimal MVP backend built with **FastAPI**, using OAuth2 authentication, 
-modular architecture, and clean API design. 
+A backend application built with **FastAPI**, using OAuth2 authentication, 
+modular architecture, and clean API design. The application and database run as containerized services.
 
 Goal of the project is to help user gain insights from AI generated diagnoses based on provided symptom data and related images.
 
@@ -10,14 +10,14 @@ Goal of the project is to help user gain insights from AI generated diagnoses ba
 - **FastAPI** with async support
 - **OAuth2 Password Flow** with JWT
 - **Pydantic** models for validation
-- **SQLite** support
+- **PostgreSQL** database
+- **Docker** with docker-compose for containerized deployment
 - Interactive API docs (Swagger & ReDoc)
 - Modular route and service structure
 
 ## Requirements
 
-- Python 3.10+
-- uv
+- Docker
 
 ## Setup
 
@@ -28,26 +28,42 @@ git clone https://github.com/martinschne/helsa.git
 cd helsa
 ```
 
-### 2. Install the dependencies
-```bash
-uv pip install -r pyproject.toml
-```
+### 2. Configure environment variables
 
-### Add your own .env file with secret environment variables
+## Add your own .env file to the project root
 ```env
 SECRET_KEY=your_secret_key
 OPENAI_API_KEY=your_openai_api_key
-UPLOADS_DIRECTORY=./app/static/uploads
-```
-Note: make sure to add your uploads directory to **.gitignore** file.
 
-### 3. Run the server locally
-```bash
-fastapi run app/main.py
+POSTGRES_USER=your_db_username
+POSTGRES_PASSWORD=your_db_password
+POSTGRES_DB=your_db_name
+
+BUILD_TARGET=dev
+
+DB_PORT=5432
+SERVER_PORT=8000
+SERVER_DEBUG_PORT=5678
 ```
+
+Set env variable `BUILD_TARGET` to `dev` when you want to enable debugging from VS Code. Set the value `prod` for production deployment.
+
+`DB_PORT`, `SERVER_PORT` and `SERVER_DEBUG_PORT` are ports enabling `server` and `db` containers connect to the host. In the example the host ports are same as container ports, but feel free to change them if they are occupied on your machine.
+
+### 3. Run server and database
+```bash
+docker compose up --build -d
+```
+
+### 3. Check the created containers
+```bash
+docker ps
+```
+You should see two containers with names `helsa-server` and `helsa-db` running.
+
 Now you can use tools like **Postman** to send requests
 to the running server. 
-Local server runs on: http://localhost:8000/
+Server runs on: http://localhost:8000/
 
 ## API documentation
 - Swagger UI: http://localhost:8000/docs

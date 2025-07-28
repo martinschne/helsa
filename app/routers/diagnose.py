@@ -1,6 +1,6 @@
-from typing import Annotated, List
+from typing import Annotated
 
-from fastapi import Depends, File, Form, status, UploadFile, APIRouter
+from fastapi import Depends, Form, status, UploadFile, APIRouter
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from openai import OpenAI, APIError, RateLimitError, BadRequestError, AuthenticationError
@@ -37,7 +37,7 @@ def get_diagnose(
         duration: Annotated[str | None, Form()] = None,
         age_years: Annotated[int | None, Form()] = None,
         saab: Annotated[SexAssignedAtBirth | None, Form()] = None,
-        symptom_images: List[UploadFile] = File(default=[]),
+        symptom_images: Annotated[list[UploadFile] | None, Form()] = [],
         response_tone: Annotated[ResponseTone, Form()] = ResponseTone.PROFESSIONAL,
         language_style: Annotated[LanguageStyle, Form()] = LanguageStyle.SIMPLE
 ):
