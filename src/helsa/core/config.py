@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     DB_PORT: str
 
     # constants
-    UPLOADS_DIRECTORY: str = "./app/static/uploads"
+    UPLOADS_DIRECTORY: str = "./src/helsa/uploads"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
 

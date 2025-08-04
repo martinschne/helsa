@@ -1,6 +1,6 @@
 from sqlmodel import Session, SQLModel, create_engine
 
-from app.core.config import settings
+from src.helsa.core.config import settings
 
 DB_USER = settings.POSTGRES_USER
 DB_PSW = settings.POSTGRES_PASSWORD

@@ -4,7 +4,7 @@ from typing import List
 
 from sqlmodel import SQLModel, Field, Relationship
 
-from app.models.consultation import ResponseTone, LanguageStyle
+from src.helsa.models.consultation import ResponseTone, LanguageStyle
 
 
 class Search(SQLModel, table=True):

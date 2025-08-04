@@ -1,9 +1,9 @@
 from PIL.ImageFile import ImageFile
 from sqlmodel import Session
 
-from app.models.consultation import PatientReport, Diagnose, DoctorsResponse
-from app.models.search import SearchImage, SearchDiagnose, Search
-from app.models.user import User
+from src.helsa.models.consultation import PatientReport, Diagnose, DoctorsResponse
+from src.helsa.models.search import SearchImage, SearchDiagnose, Search
+from src.helsa.models.user import User
 
 
 def _create_search_diagnose(diagnose: Diagnose):

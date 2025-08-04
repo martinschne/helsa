@@ -8,10 +8,10 @@ from jwt import InvalidTokenError
 from passlib.context import CryptContext
 from sqlmodel import select
 
-from app.core.config import settings
-from app.core.types import DBSessionDependency
-from app.models.security import TokenData
-from app.models.user import User
+from src.helsa.core.config import settings
+from src.helsa.core.types import DBSessionDependency
+from src.helsa.models.security import TokenData
+from src.helsa.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

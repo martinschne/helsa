@@ -1,4 +1,4 @@
-from app.models.consultation import Prompt, PatientReport, ResponseTone
+from src.helsa.models.consultation import Prompt, PatientReport, ResponseTone
 
 
 def _get_configured_temperature(tone: ResponseTone) -> float:

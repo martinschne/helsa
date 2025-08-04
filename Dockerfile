@@ -1,23 +1,20 @@
 # base build
 FROM python:3.13-slim AS base
-ENV PYTHONDONTWRITEBYTECODE=1
+COPY --from=ghcr.io/astral-sh/uv:0.8.4 /uv /uvx /bin/
+WORKDIR /app
+COPY src ./src
 ENV PYTHONUNBUFFERED=1
-WORKDIR /code
-COPY requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir --no-compile --upgrade -r requirements.txt
-COPY /app ./app
-COPY .env ./.env
-RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /code
+ENV PYTHONPATH=/app/src
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-cache
+RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
 
 # development build (incl. debugging)
 FROM base AS dev
-# EXPOSE 8000
-# EXPOSE 5678
-RUN pip install --no-cache-dir --no-compile --upgrade debugpy
-CMD ["python", "-m", "debugpy", "--listen",  "0.0.0.0:5678", "-m", "fastapi", "run", "/code/app/main.py", "--port", "8000"]
+RUN uv pip install debugpy
+CMD [".venv/bin/python", "-Xfrozen_modules=off", "-m", "debugpy", "--listen", "0.0.0.0:5678", "-m", "uvicorn", "helsa.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
 # production build
 FROM base AS prod
-# EXPOSE 8000
-CMD ["fastapi", "run", "/code/app/main.py", "--port", "8000"]
+CMD [".venv/bin/uvicorn", "helsa.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

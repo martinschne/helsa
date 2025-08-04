@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 
-from app.models.user import User, UserFlags
+from src.helsa.models.user import User, UserFlags
 
 
 def get_user(username: str, session: Session) -> User:

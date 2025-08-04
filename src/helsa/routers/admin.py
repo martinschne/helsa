@@ -4,10 +4,10 @@ from fastapi import APIRouter, status
 from fastapi.exceptions import HTTPException
 from fastapi.responses import JSONResponse
 
-from app.core.types import DBSessionDependency
-from app.models.user import UserFlagsRequest
-from app.repositories.user_repository import get_user, save_user_flags
-from app.routers import constants
+from src.helsa.core.types import DBSessionDependency
+from src.helsa.models.user import UserFlagsRequest
+from src.helsa.repositories.user_repository import get_user, save_user_flags
+from src.helsa.routers import constants
 
 router = APIRouter(
     prefix="/admin",

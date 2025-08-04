@@ -7,11 +7,11 @@ from io import BytesIO
 from PIL import Image, ExifTags, UnidentifiedImageError
 from fastapi import HTTPException, status, UploadFile
 
-from app.core.config import settings
-from app.core.exceptions import exception_response
-from app.core.logging import logger
-from app.models.user import User
-from app.services import constants
+from src.helsa.core.config import settings
+from src.helsa.core.exceptions import exception_response
+from src.helsa.core.logging import logger
+from src.helsa.models.user import User
+from src.helsa.services import constants
 
 
 def _get_exif_orientation_key() -> int | None:

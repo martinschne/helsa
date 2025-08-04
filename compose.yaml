@@ -8,8 +8,8 @@ services:
       - "${SERVER_PORT}:8000"
       - "${SERVER_DEBUG_PORT}:5678"
     volumes:
-      - ./app/:/code/app:ro
-      - server_uploads:/code/app/static/uploads
+      - ./src:/app/src/
+      - server_uploads:/./src/helsa/uploads
     depends_on:
       - db
     env_file:
@@ -38,7 +38,6 @@ services:
 volumes:
   postgres_data:
   server_uploads:
-
 
 networks:
   helsa-network:

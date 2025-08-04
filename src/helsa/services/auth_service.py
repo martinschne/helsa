@@ -1,8 +1,8 @@
 from sqlmodel import Session
 
-from app.core.security import verify_password
-from app.models.user import User
-from app.repositories.user_repository import get_user
+from src.helsa.core.security import verify_password
+from src.helsa.models.user import User
+from src.helsa.repositories.user_repository import get_user
 
 
 def authenticate_user(username: str, password: str, session: Session) -> bool | User:

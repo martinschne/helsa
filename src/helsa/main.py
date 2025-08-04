@@ -5,11 +5,11 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.requests import Request
 
-from app.core.config import settings
-from app.core.exceptions import exception_response
-from app.core.logging import logger
-from app.database import create_db_and_tables
-from app.routers import access, diagnose, admin
+from src.helsa.core.config import settings
+from src.helsa.core.exceptions import exception_response
+from src.helsa.core.logging import logger
+from src.helsa.database import create_db_and_tables
+from src.helsa.routers import access, diagnose, admin
 
 
 os.makedirs(settings.UPLOADS_DIRECTORY, exist_ok=True)
@@ -37,7 +37,3 @@ async def general_exception_handler(request: Request, exc: Exception):
     """
     logger.error(f"Unexpected error: {exc}", exc_info=True)
     raise exception_response()
-
-
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)

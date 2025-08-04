@@ -1,20 +1,19 @@
 [project]
-name = "helsa"
+name = "Helsa"
 version = "0.2.0"
-description = "AI Health Advisor"
+description = "AI health advisor"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "PyJWT~=2.10.1",
-    "SQLAlchemy~=2.0.41",
-    "bcrypt~=4.3.0",
-    "fastapi[standard]~=0.116.1",
-    "openai~=1.97.1",
-    "passlib~=1.7.4",
-    "pillow~=11.3.0",
-    "psycopg2-binary~=2.9.10",
-    "pydantic-settings~=2.9.1",
-    "pydantic~=2.11.7",
-    "sqlmodel~=0.0.24",
-    "uvicorn~=0.34.3",
+    "bcrypt>=4.3.0",
+    "fastapi[standard]>=0.116.1",
+    "openai>=1.98.0",
+    "passlib>=1.7.4",
+    "pillow>=11.3.0",
+    "psycopg2-binary>=2.9.10",
+    "pydantic>=2.11.7",
+    "pydantic-settings>=2.10.1",
+    "pyjwt>=2.10.1",
+    "sqlalchemy>=2.0.42",
+    "sqlmodel>=0.0.24",
 ]

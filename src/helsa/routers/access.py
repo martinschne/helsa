@@ -6,13 +6,13 @@ from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import select
 
-from app.core.config import settings
-from app.core.security import create_access_token, hash_password
-from app.core.types import DBSessionDependency
-from app.models.security import Token
-from app.models.user import UserCreate, User
-from app.routers import constants
-from app.services.auth_service import authenticate_user
+from src.helsa.core.config import settings
+from src.helsa.core.security import create_access_token, hash_password
+from src.helsa.core.types import DBSessionDependency
+from src.helsa.models.security import Token
+from src.helsa.models.user import UserCreate, User
+from src.helsa.routers import constants
+from src.helsa.services.auth_service import authenticate_user
 
 router = APIRouter(
     prefix="/access",

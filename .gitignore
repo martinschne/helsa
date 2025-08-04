@@ -1,6 +1,7 @@
+.ropeproject
 .idea
 .vscode
 .env
 .venv/
-/app/static/
+/src/helsa/uploads/
 **/__pycache__

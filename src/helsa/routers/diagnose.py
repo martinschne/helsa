@@ -6,17 +6,17 @@ from fastapi.responses import JSONResponse
 from openai import OpenAI, APIError, RateLimitError, BadRequestError, AuthenticationError
 from pydantic import ValidationError
 
-from app.core.config import settings
-from app.core.exceptions import exception_response
-from app.core.logging import logger
-from app.core.security import get_current_user
-from app.core.types import DBSessionDependency
-from app.models.consultation import ResponseTone, LanguageStyle, DoctorsResponse, PatientReport, SexAssignedAtBirth
-from app.models.user import User
-from app.routers import constants
-from app.services.image_service import upload_images, encode_images_to_base64, base64_images_to_urls
-from app.services.prompt_service import build_diagnose_prompt
-from app.services.search_service import save_search, create_search
+from src.helsa.core.config import settings
+from src.helsa.core.exceptions import exception_response
+from src.helsa.core.logging import logger
+from src.helsa.core.security import get_current_user
+from src.helsa.core.types import DBSessionDependency
+from src.helsa.models.consultation import ResponseTone, LanguageStyle, DoctorsResponse, PatientReport, SexAssignedAtBirth
+from src.helsa.models.user import User
+from src.helsa.routers import constants
+from src.helsa.services.image_service import upload_images, encode_images_to_base64, base64_images_to_urls
+from src.helsa.services.prompt_service import build_diagnose_prompt
+from src.helsa.services.search_service import save_search, create_search
 
 router = APIRouter(
     tags=["diagnose"]
